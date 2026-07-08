@@ -21,12 +21,29 @@
     .super-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.super-card{border:1px solid var(--border);border-left:6px solid #9ca3af;border-radius:12px;padding:11px;background:#fff;cursor:pointer;transition:.15s ease}.super-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,24,40,.12)}.super-card.active-filter{outline:2px solid #2563eb;background:#eff6ff}.super-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}.super-name{font-weight:900;font-size:15px}.badge{font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;background:#f3f4f6;color:#374151;white-space:nowrap}.badge.light{background:#dcfce7;color:#166534}.badge.balanced{background:#fef3c7;color:#92400e}.badge.heavy{background:#fee2e2;color:#991b1b}.super-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#475467}.super-metrics b{color:#111827;font-size:14px}
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}th,td{padding:8px 7px;border-bottom:1px solid #eef2f6;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f8fafc;font-weight:900;color:#344054;position:sticky;top:0;z-index:1}tr:hover td{background:#f9fafb}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}.recommendation{display:inline-block;font-weight:800;border-radius:999px;padding:3px 7px;font-size:11px;background:#eff6ff;color:#1d4ed8}
     .map-label{background:#fff;border:1px solid #999;border-radius:4px;padding:1px 4px;box-shadow:0 1px 2px rgba(0,0,0,.22);text-align:center;white-space:nowrap;line-height:1.05}.map-label .sub{font-weight:800;font-size:9.5px}.map-label .super{font-weight:800;font-size:8.5px;margin-top:1px}.leaflet-tooltip.arive-hover-tooltip{background:rgba(255,255,255,.97);border:1px solid #667085;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);color:#111827;font-weight:800;padding:5px 7px;font-size:12px}
+    
+    .alert-list{display:grid;gap:8px;margin-bottom:16px}
+    .alert-item{border-radius:10px;padding:10px 11px;font-size:13px;border:1px solid var(--border);background:#f8fafc}
+    .alert-item.warning{background:#fff7ed;border-color:#fed7aa;color:#7c2d12}
+    .alert-item.danger{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+    .alert-item.good{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+    .sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .sim-result{border:1px solid var(--border);background:#f8fafc;border-radius:12px;padding:10px;margin-bottom:16px;font-size:13px}
+    .impact-row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;gap:8px}
+    .impact-row:last-child{border-bottom:none}
+    .forecast-table th,.forecast-table td{text-align:center}
+    .forecast-table th:first-child,.forecast-table td:first-child{text-align:left}
+    .heat{font-weight:900;border-radius:999px;padding:4px 7px;display:inline-block;min-width:58px}
+    .heat.light{background:#dcfce7;color:#166534}
+    .heat.balanced{background:#fef3c7;color:#92400e}
+    .heat.heavy{background:#fee2e2;color:#991b1b}
+
     @media(max-width:1050px){.layout{grid-template-columns:1fr}#map{height:620px}.side-card{max-height:none}}@media(max-width:650px){.summary-grid,.filters,.super-cards{grid-template-columns:1fr}.topbar{align-items:flex-start}}
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, territory spread, active communities, future communities, and potential projects</div></div>
+    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, alerts, what-if planning, forecast, territory spread, and pipeline map</div></div>
     <div class="top-actions"><span class="status-pill" id="lastUpdated">Loading...</span><a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a><button class="button dark" onclick="location.reload()">Refresh Dashboard</button></div>
   </div>
   <div class="layout">
@@ -34,6 +51,31 @@
     <div class="side-card">
       <div class="section-title">Capacity Summary</div><div id="status" class="notice">Loading live data from Google Sheets...</div>
       <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
+      
+      <div class="section-title">Operations Alerts</div>
+      <div class="alert-list" id="alertList"></div>
+
+      <div class="section-title">What If Simulator <span class="small">Preview only — does not change the Google Sheet</span></div>
+      <div class="sim-grid">
+        <div class="filter-box">
+          <label for="simCommunity">Move Community</label>
+          <select id="simCommunity"></select>
+        </div>
+        <div class="filter-box">
+          <label for="simTo">Move To</label>
+          <select id="simTo"></select>
+        </div>
+      </div>
+      <div class="sim-result" id="simResult">Select a community and superintendent to preview impact.</div>
+
+      <div class="section-title">Month-by-Month Forecast <span class="small">Uses sheet month columns when available</span></div>
+      <div class="table-wrap">
+        <table class="forecast-table">
+          <thead id="forecastHead"></thead>
+          <tbody id="forecastRows"></tbody>
+        </table>
+      </div>
+
       <div class="filters"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
       <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
       
@@ -67,7 +109,7 @@ function parseCoord(v){if(v===null||v===undefined)return NaN;const n=Number(Stri
 function parseLatLng(row){let latRaw=val(row,["Latitude","Lat"]),lngRaw=val(row,["Longitude","Long","Lng"]);if(String(latRaw).includes(",")){const parts=String(latRaw).split(",");latRaw=parts[0];if(!lngRaw||String(lngRaw).trim()==="")lngRaw=parts[1]}const lat=parseCoord(latRaw),lng=parseCoord(lngRaw);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null}
 async function fetchTab(tabName){const url=OPEN_SHEET_BASE+encodeURIComponent(tabName);const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error(tabName+" failed to load. HTTP "+res.status);const data=await res.json();if(!Array.isArray(data))throw new Error(tabName+" did not return rows.");return data}
 function normalizeSuper(s){const clean=String(s||"Unassigned").trim();const found=Object.keys(superColors).find(x=>x.toLowerCase()===clean.toLowerCase());return found||clean}
-function activeFromRow(row){const ll=parseLatLng(row);if(!ll)return null;const subdivision=String(val(row,["Subdivision","Community","Name"])).trim();if(!subdivision)return null;const homes=num(val(row,["Homes","Home Count","Current Homes"])),townhomes=num(val(row,["Townhomes","Townhomes?","Townhome","TH"])),upcoming=num(val(row,["Upcoming Digs","Upcoming","Digs"])),current=homes+townhomes*.5;return{subdivision,address:String(val(row,["Address","Location"])).trim(),super:normalizeSuper(String(val(row,["Superintendent","Super"])).trim()||"Unassigned"),homes,townhomes,upcoming,current_weighted:current,total_weighted:current+upcoming,...ll}}
+function activeFromRow(row){const ll=parseLatLng(row);if(!ll)return null;const subdivision=String(val(row,["Subdivision","Community","Name"])).trim();if(!subdivision)return null;const homes=num(val(row,["Homes","Home Count","Current Homes"])),townhomes=num(val(row,["Townhomes","Townhomes?","Townhome","TH"])),upcoming=num(val(row,["Upcoming Digs","Upcoming","Digs"])),current=homes+townhomes*.5;return{subdivision,address:String(val(row,["Address","Location"])).trim(),super:normalizeSuper(String(val(row,["Superintendent","Super"])).trim()||"Unassigned"),homes,townhomes,upcoming,current_weighted:current,total_weighted:current+upcoming,raw:row,...ll}}
 function futureFromRow(row,type){const ll=parseLatLng(row);if(!ll)return null;const community=String(val(row,["Community","Subdivision","Project","Name"])).trim();if(!community)return null;return{community,address:String(val(row,["Address","Location","City"])).trim(),status:String(val(row,["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(),lots:num(val(row,["Lots","How Many Lots","Homes","Total Lots","Units"])),type,...ll}}
 function workloadStatus(total){if(total<=THRESHOLDS.lightMax)return"light";if(total<=THRESHOLDS.balancedMax)return"balanced";return"heavy"}
 function statusLabel(total){const s=workloadStatus(total);return s==="light"?"Light":s==="balanced"?"Balanced":"Heavy"}
@@ -135,8 +177,164 @@ function renderSpreadRows(stats) {
   if (el) el.innerHTML = rows;
 }
 
+
+function alertClass(type) {
+  if (type === "danger") return "danger";
+  if (type === "good") return "good";
+  return "warning";
+}
+
+function renderAlerts(stats) {
+  const alerts = [];
+  const entries = Object.entries(stats);
+  if (!entries.length) {
+    document.getElementById("alertList").innerHTML = '<div class="alert-item">No active data loaded yet.</div>';
+    return;
+  }
+
+  const heaviest = entries.slice().sort((a,b) => b[1].total - a[1].total)[0];
+  const lightest = entries.slice().sort((a,b) => a[1].total - b[1].total)[0];
+  const mostUpcoming = entries.slice().sort((a,b) => b[1].upcoming - a[1].upcoming)[0];
+
+  entries.forEach(([name, s]) => {
+    if (s.total > THRESHOLDS.balancedMax) {
+      alerts.push({type:"danger", text:`⚠️ ${name} is Heavy at ${s.total.toFixed(1)} WU.`});
+    }
+  });
+
+  if (mostUpcoming && mostUpcoming[1].upcoming > 0) {
+    alerts.push({type:"warning", text:`📅 ${mostUpcoming[0]} has the most upcoming digs at ${mostUpcoming[1].upcoming.toFixed(0)}.`});
+  }
+
+  if (lightest) {
+    alerts.push({type:"good", text:`✅ ${lightest[0]} has the most available capacity at ${lightest[1].total.toFixed(1)} WU.`});
+  }
+
+  const spreads = entries.map(([name]) => [name, spreadForSuper(name)]);
+  const tightest = spreads.slice().sort((a,b) => a[1].maxMiles - b[1].maxMiles)[0];
+  const widest = spreads.slice().sort((a,b) => b[1].maxMiles - a[1].maxMiles)[0];
+
+  if (tightest) alerts.push({type:"good", text:`📍 ${tightest[0]} has the tightest territory spread at ${tightest[1].maxMiles.toFixed(1)} miles.`});
+  if (widest && widest[1].maxMiles >= 15) alerts.push({type:"warning", text:`🧭 ${widest[0]} is the most spread out at ${widest[1].maxMiles.toFixed(1)} miles.`});
+
+  if (heaviest && lightest && heaviest[1].total - lightest[1].total >= 10) {
+    alerts.push({type:"warning", text:`🔁 Load gap: ${heaviest[0]} is ${ (heaviest[1].total - lightest[1].total).toFixed(1)} WU heavier than ${lightest[0]}.`});
+  }
+
+  document.getElementById("alertList").innerHTML = alerts.slice(0, 6).map(a =>
+    `<div class="alert-item ${alertClass(a.type)}">${a.text}</div>`
+  ).join("");
+}
+
+function populateSimulator() {
+  const communitySelect = document.getElementById("simCommunity");
+  const superSelect = document.getElementById("simTo");
+  if (!communitySelect || !superSelect) return;
+
+  communitySelect.innerHTML = activeData
+    .slice()
+    .sort((a,b) => a.subdivision.localeCompare(b.subdivision))
+    .map((c,i) => `<option value="${activeData.indexOf(c)}">${c.subdivision} — ${c.super}</option>`)
+    .join("");
+
+  const supers = Array.from(new Set(activeData.map(x => x.super))).sort();
+  superSelect.innerHTML = supers.map(s => `<option value="${s}">${s}</option>`).join("");
+
+  communitySelect.onchange = renderSimulator;
+  superSelect.onchange = renderSimulator;
+  renderSimulator();
+}
+
+function renderSimulator() {
+  const communitySelect = document.getElementById("simCommunity");
+  const superSelect = document.getElementById("simTo");
+  const result = document.getElementById("simResult");
+  if (!communitySelect || !superSelect || !result || !activeData.length) return;
+
+  const community = activeData[Number(communitySelect.value)] || activeData[0];
+  const toSuper = superSelect.value;
+  const fromSuper = community.super;
+
+  if (!community || !toSuper) {
+    result.innerHTML = "Select a community and superintendent to preview impact.";
+    return;
+  }
+
+  const stats = statsFor(activeData);
+  const impact = community.total_weighted;
+
+  if (fromSuper === toSuper) {
+    result.innerHTML = `<b>${community.subdivision}</b> is already assigned to <b>${fromSuper}</b>. Pick a different superintendent to preview a move.`;
+    return;
+  }
+
+  const fromBefore = stats[fromSuper]?.total || 0;
+  const toBefore = stats[toSuper]?.total || 0;
+  const fromAfter = fromBefore - impact;
+  const toAfter = toBefore + impact;
+
+  const fromStatus = statusLabel(fromAfter);
+  const toStatus = statusLabel(toAfter);
+
+  result.innerHTML = `
+    <div style="font-weight:900;margin-bottom:6px;">Move ${community.subdivision}</div>
+    <div class="small" style="margin-bottom:8px;">Previewing ${impact.toFixed(1)} WU moved from ${fromSuper} to ${toSuper}.</div>
+    <div class="impact-row"><span>${fromSuper}</span><b>${fromBefore.toFixed(1)} → ${fromAfter.toFixed(1)} WU (${fromStatus})</b></div>
+    <div class="impact-row"><span>${toSuper}</span><b>${toBefore.toFixed(1)} → ${toAfter.toFixed(1)} WU (${toStatus})</b></div>
+    <div class="impact-row"><span>Community impact</span><b>${community.homes} homes, ${community.townhomes} TH, ${community.upcoming} digs</b></div>
+  `;
+}
+
+function discoverForecastMonths() {
+  const preferred = [
+    {label:"Current", names:["Current WU","Current Weighted","Current"]},
+    {label:"End Jun", names:["End June","End Jun","June","June End"]},
+    {label:"End Jul", names:["End July","End Jul","July","July End"]},
+    {label:"End Aug", names:["End August","End Aug","August","August End"]},
+    {label:"End Sep", names:["End September","End Sep","September","September End"]},
+    {label:"End Oct", names:["End October","End Oct","October","October End"]}
+  ];
+
+  const found = preferred.filter(m => activeData.some(r => val(r.raw || {}, m.names) !== ""));
+  if (found.length >= 2) return found;
+
+  // Fallback: current and after upcoming digs, so the feature still works even without month columns.
+  return [
+    {label:"Current", fallback:"current"},
+    {label:"With Digs", fallback:"total"}
+  ];
+}
+
+function forecastValue(loc, month) {
+  if (month.fallback === "current") return loc.current_weighted;
+  if (month.fallback === "total") return loc.total_weighted;
+  const v = val(loc.raw || {}, month.names);
+  return v === "" ? loc.total_weighted : num(v);
+}
+
+function renderForecast(stats) {
+  const months = discoverForecastMonths();
+  document.getElementById("forecastHead").innerHTML =
+    `<tr><th>Super</th>${months.map(m => `<th>${m.label}</th>`).join("")}</tr>`;
+
+  const supers = Object.keys(stats).sort();
+  const rows = supers.map(s => {
+    const locs = activeData.filter(a => a.super === s);
+    const cells = months.map(m => {
+      const total = locs.reduce((sum, loc) => sum + forecastValue(loc, m), 0);
+      const st = workloadStatus(total);
+      return `<td><span class="heat ${st}">${total.toFixed(1)}</span></td>`;
+    }).join("");
+    const color = superColors[s] || superColors.Unassigned;
+    return `<tr><td><span class="dot" style="background:${color}"></span>${s}</td>${cells}</tr>`;
+  }).join("");
+
+  document.getElementById("forecastRows").innerHTML = rows;
+}
+
+
 function renderAll(){clearMap();const active=currentFilter==="All"?activeData:activeData.filter(x=>x.super===currentFilter);active.forEach(addActive);futureData.forEach(i=>addFuture(i,"Future"));potentialData.forEach(i=>addFuture(i,"Potential"));applyLayerToggles();renderTables(active,futureData,potentialData);fitVisibleMap()}
-function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderSuperCards(allStats);renderSpreadRows(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats)}
+function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderAlerts(allStats);renderForecast(allStats);renderSuperCards(allStats);renderSpreadRows(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats);renderSimulator()}
 function renderSuperCards(stats){document.getElementById("superCards").innerHTML=Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v])=>{const color=superColors[s]||superColors.Unassigned,st=workloadStatus(v.total),activeClass=currentFilter===s?" active-filter":"";return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Spread<br><b>${spreadLabel(s)}</b></div></div></div>`}).join("")}
 function renderCommunityRows(active){document.getElementById("communityRows").innerHTML=active.slice().sort((a,b)=>(a.super+a.subdivision).localeCompare(b.super+b.subdivision)).map(loc=>`<tr><td><span class="dot" style="background:${superColors[loc.super]||superColors.Unassigned}"></span>${loc.subdivision}</td><td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td></tr>`).join("")}
 function renderOpportunityRows(future,potential,stats){const centroids={};Object.keys(stats).forEach(s=>{const pts=activeData.filter(a=>a.super===s);if(pts.length)centroids[s]={lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,lng:pts.reduce((sum,p)=>sum+p.lng,0)/pts.length,total:stats[s].total}});const capacityFit=Object.entries(stats).sort((a,b)=>a[1].total-b[1].total)[0]?.[0]||"";document.getElementById("opportunityRows").innerHTML=future.concat(potential).map(o=>{let closest="",min=Infinity;Object.entries(centroids).forEach(([s,c])=>{const d=haversine(o,c);if(d<min){min=d;closest=s}});let rec=closest&&capacityFit&&closest===capacityFit?closest:(closest&&capacityFit?closest+" / "+capacityFit:(closest||capacityFit||""));return `<tr><td>${o.community}</td><td>${o.lots||""}</td><td>${o.status||o.type||""}</td><td>${closest}</td><td>${capacityFit}</td><td><span class="recommendation">${rec}</span></td></tr>`}).join("")}
@@ -144,7 +342,7 @@ function fitVisibleMap(){const groups=[baseGroups.active,baseGroups.future,baseG
 function populateFilters(){const select=document.getElementById("superFilter"),supers=Array.from(new Set(activeData.map(x=>x.super))).sort();select.innerHTML='<option value="All">All Superintendents</option>'+supers.map(s=>`<option value="${s}">${s}</option>`).join("")}
 function selectSuper(s){currentFilter=currentFilter===s?"All":s;document.getElementById("superFilter").value=currentFilter;renderAll()}
 function wireEvents(){document.getElementById("superFilter").addEventListener("change",e=>{currentFilter=e.target.value;renderAll()});["toggleActive","toggleFuture","togglePotential","toggleLabels"].forEach(id=>{document.getElementById(id).addEventListener("change",()=>{applyLayerToggles();if(id!=="toggleLabels")fitVisibleMap()})})}
-async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found. Check Latitude/Longitude and tab headers.");populateFilters();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
+async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found. Check Latitude/Longitude and tab headers.");populateFilters();populateSimulator();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
 window.addEventListener("error",event=>{setStatus(`<b>JavaScript error:</b><br>${event.message}`,"error")});
 init();
 </script>
