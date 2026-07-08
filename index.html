@@ -97,6 +97,11 @@
 'use strict';
 const SHEET_ID="1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
 const OPEN_SHEET_BASE="https://opensheet.elk.sh/"+SHEET_ID+"/";
+const PUBLISHED_CSV_URLS={
+  "Active Communities":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=555948458&single=true&output=csv",
+  "Future Communities":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=846399466&single=true&output=csv",
+  "Potential Projects":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=1220585989&single=true&output=csv"
+};
 const TAB_ACTIVE="Active Communities",TAB_FUTURE="Future Communities",TAB_POTENTIAL="Potential Projects";
 const THRESHOLDS={lightMax:14,balancedMax:22};
 const superColors={"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
@@ -107,7 +112,106 @@ function val(row,names){const keys=Object.keys(row||{});for(const name of names)
 function num(x){if(x===null||x===undefined)return 0;const cleaned=String(x).replace(/,/g,"").trim();if(cleaned===""||cleaned.toLowerCase()==="tbd")return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0}
 function parseCoord(v){if(v===null||v===undefined)return NaN;const n=Number(String(v).trim().replace(/,$/,""));return Number.isFinite(n)?n:NaN}
 function parseLatLng(row){let latRaw=val(row,["Latitude","Lat"]),lngRaw=val(row,["Longitude","Long","Lng"]);if(String(latRaw).includes(",")){const parts=String(latRaw).split(",");latRaw=parts[0];if(!lngRaw||String(lngRaw).trim()==="")lngRaw=parts[1]}const lat=parseCoord(latRaw),lng=parseCoord(lngRaw);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null}
-async function fetchTab(tabName){const url=OPEN_SHEET_BASE+encodeURIComponent(tabName);const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error(tabName+" failed to load. HTTP "+res.status);const data=await res.json();if(!Array.isArray(data))throw new Error(tabName+" did not return rows.");return data}
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i + 1];
+    if (c === '"' && inQuotes && n === '"') { cell += '"'; i++; continue; }
+    if (c === '"') { inQuotes = !inQuotes; continue; }
+    if (c === "," && !inQuotes) { row.push(cell); cell = ""; continue; }
+    if ((c === "\n" || c === "\r") && !inQuotes) {
+      if (c === "\r" && n === "\n") i++;
+      row.push(cell); cell = "";
+      if (row.some(v => String(v).trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += c;
+  }
+  row.push(cell);
+  if (row.some(v => String(v).trim() !== "")) rows.push(row);
+  return rows;
+}
+
+function rowsToObjects(rows) {
+  if (!rows || !rows.length) return [];
+  let headerIndex = 0;
+
+  // Find the real header row even if Google/Sheet adds a blank or note row.
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const joined = rows[i].map(x => norm(x)).join("|");
+    if ((joined.includes("subdivision") || joined.includes("community") || joined.includes("project")) &&
+        (joined.includes("latitude") || joined.includes("lat")) &&
+        (joined.includes("longitude") || joined.includes("lng") || joined.includes("long"))) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  const headers = rows[headerIndex].map((h, idx) => String(h || `Column ${idx+1}`).trim());
+  return rows.slice(headerIndex + 1).map(r => {
+    const obj = {};
+    headers.forEach((h, idx) => obj[h || `Column ${idx+1}`] = r[idx] ?? "");
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => String(v).trim() !== ""));
+}
+
+function looksUsable(tabName, data) {
+  if (!Array.isArray(data) || !data.length) return false;
+  if (data.length === 1 && Object.keys(data[0]).some(k => norm(k).includes("error"))) return false;
+
+  if (tabName === TAB_ACTIVE) {
+    return data.some(r => activeFromRow(r));
+  }
+  return data.some(r => futureFromRow(r, tabName === TAB_FUTURE ? "Future" : "Potential"));
+}
+
+async function tryOpenSheet(tabName) {
+  const url = OPEN_SHEET_BASE + encodeURIComponent(tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("OpenSheet HTTP " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("OpenSheet did not return rows");
+  if (!looksUsable(tabName, data)) throw new Error("OpenSheet returned rows but they did not match the dashboard headers");
+  return data;
+}
+
+async function tryGvizCSV(tabName) {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("GViz HTTP " + res.status);
+  const text = await res.text();
+  const data = rowsToObjects(parseCSV(text));
+  if (!looksUsable(tabName, data)) throw new Error("GViz returned rows but they did not match the dashboard headers");
+  return data;
+}
+
+async function tryPublishedCSV(tabName) {
+  const url = PUBLISHED_CSV_URLS[tabName];
+  if (!url) throw new Error("No published CSV URL for " + tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("Published CSV HTTP " + res.status);
+  const text = await res.text();
+  const data = rowsToObjects(parseCSV(text));
+  if (!looksUsable(tabName, data)) throw new Error("Published CSV returned rows but they did not match the dashboard headers");
+  return data;
+}
+
+async function fetchTab(tabName) {
+  const errors = [];
+  for (const loader of [tryOpenSheet, tryGvizCSV, tryPublishedCSV]) {
+    try {
+      const data = await loader(tabName);
+      console.log(tabName + " loaded with " + loader.name, data.length, data[0]);
+      return data;
+    } catch (e) {
+      errors.push(loader.name + ": " + e.message);
+      console.warn(tabName, loader.name, e);
+    }
+  }
+  throw new Error(tabName + " could not load. " + errors.join(" | "));
+}
 function normalizeSuper(s){const clean=String(s||"Unassigned").trim();const found=Object.keys(superColors).find(x=>x.toLowerCase()===clean.toLowerCase());return found||clean}
 function activeFromRow(row){const ll=parseLatLng(row);if(!ll)return null;const subdivision=String(val(row,["Subdivision","Community","Name"])).trim();if(!subdivision)return null;const homes=num(val(row,["Homes","Home Count","Current Homes"])),townhomes=num(val(row,["Townhomes","Townhomes?","Townhome","TH"])),upcoming=num(val(row,["Upcoming Digs","Upcoming","Digs"])),current=homes+townhomes*.5;return{subdivision,address:String(val(row,["Address","Location"])).trim(),super:normalizeSuper(String(val(row,["Superintendent","Super"])).trim()||"Unassigned"),homes,townhomes,upcoming,current_weighted:current,total_weighted:current+upcoming,raw:row,...ll}}
 function futureFromRow(row,type){const ll=parseLatLng(row);if(!ll)return null;const community=String(val(row,["Community","Subdivision","Project","Name"])).trim();if(!community)return null;return{community,address:String(val(row,["Address","Location","City"])).trim(),status:String(val(row,["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(),lots:num(val(row,["Lots","How Many Lots","Homes","Total Lots","Units"])),type,...ll}}
@@ -342,7 +446,7 @@ function fitVisibleMap(){const groups=[baseGroups.active,baseGroups.future,baseG
 function populateFilters(){const select=document.getElementById("superFilter"),supers=Array.from(new Set(activeData.map(x=>x.super))).sort();select.innerHTML='<option value="All">All Superintendents</option>'+supers.map(s=>`<option value="${s}">${s}</option>`).join("")}
 function selectSuper(s){currentFilter=currentFilter===s?"All":s;document.getElementById("superFilter").value=currentFilter;renderAll()}
 function wireEvents(){document.getElementById("superFilter").addEventListener("change",e=>{currentFilter=e.target.value;renderAll()});["toggleActive","toggleFuture","togglePotential","toggleLabels"].forEach(id=>{document.getElementById(id).addEventListener("change",()=>{applyLayerToggles();if(id!=="toggleLabels")fitVisibleMap()})})}
-async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found. Check Latitude/Longitude and tab headers.");populateFilters();populateSimulator();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
+async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found after trying OpenSheet, GViz CSV, and Published CSV. The active tab may have changed headers, moved tabs, or lost public/published access.");populateFilters();populateSimulator();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
 window.addEventListener("error",event=>{setStatus(`<b>JavaScript error:</b><br>${event.message}`,"error")});
 init();
 </script>
