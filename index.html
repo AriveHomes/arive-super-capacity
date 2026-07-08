@@ -26,7 +26,7 @@
 </head>
 <body>
   <div class="topbar">
-    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, active communities, future communities, and potential projects</div></div>
+    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, territory spread, active communities, future communities, and potential projects</div></div>
     <div class="top-actions"><span class="status-pill" id="lastUpdated">Loading...</span><a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a><button class="button dark" onclick="location.reload()">Refresh Dashboard</button></div>
   </div>
   <div class="layout">
@@ -36,6 +36,17 @@
       <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
       <div class="filters"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
       <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
+      
+      <div class="section-title">Territory Spread <span class="small">How far each super is spread geographically</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Super</th><th>Communities</th><th>Furthest Spread</th><th>Avg From Center</th><th>Read</th></tr>
+          </thead>
+          <tbody id="spreadRows"></tbody>
+        </table>
+      </div>
+
       <div class="section-title">Opportunity Queue</div><div class="table-wrap"><table><thead><tr><th>Community</th><th>Lots</th><th>Status</th><th>Closest</th><th>Capacity</th><th>Recommendation</th></tr></thead><tbody id="opportunityRows"></tbody></table></div>
       <div class="section-title">Community Detail</div><div class="table-wrap"><table><thead><tr><th>Subdivision</th><th>Super</th><th>Homes</th><th>TH</th><th>Digs</th><th>Total WU</th></tr></thead><tbody id="communityRows"></tbody></table></div>
     </div>
@@ -70,9 +81,63 @@ function updateLabels(){const show=document.getElementById("toggleLabels").check
 function applyLayerToggles(){[["toggleActive",baseGroups.active],["toggleFuture",baseGroups.future],["togglePotential",baseGroups.potential]].forEach(([id,g])=>{const checked=document.getElementById(id).checked;if(checked&&!map.hasLayer(g))map.addLayer(g);if(!checked&&map.hasLayer(g))map.removeLayer(g)});updateLabels()}
 function haversine(a,b){const R=3958.8,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,lat1=a.lat*Math.PI/180,lat2=b.lat*Math.PI/180,h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 function statsFor(active){const stats={};active.forEach(loc=>{const s=loc.super||"Unassigned";if(!stats[s])stats[s]={communities:0,homes:0,townhomes:0,upcoming:0,current:0,total:0};stats[s].communities++;stats[s].homes+=loc.homes;stats[s].townhomes+=loc.townhomes;stats[s].upcoming+=loc.upcoming;stats[s].current+=loc.current_weighted;stats[s].total+=loc.total_weighted});return stats}
+
+function spreadForSuper(superName) {
+  const pts = activeData.filter(a => a.super === superName);
+  if (pts.length <= 1) {
+    return {maxMiles: 0, avgFromCenter: 0, communities: pts.length, read: "Single location"};
+  }
+
+  let maxMiles = 0;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      maxMiles = Math.max(maxMiles, haversine(pts[i], pts[j]));
+    }
+  }
+
+  const center = {
+    lat: pts.reduce((sum, p) => sum + p.lat, 0) / pts.length,
+    lng: pts.reduce((sum, p) => sum + p.lng, 0) / pts.length
+  };
+
+  const avgFromCenter = pts.reduce((sum, p) => sum + haversine(p, center), 0) / pts.length;
+
+  let read = "Tight";
+  if (maxMiles >= 25) read = "Very spread out";
+  else if (maxMiles >= 15) read = "Spread out";
+  else if (maxMiles >= 8) read = "Moderate";
+  else read = "Tight";
+
+  return {maxMiles, avgFromCenter, communities: pts.length, read};
+}
+
+function spreadLabel(superName) {
+  const s = spreadForSuper(superName);
+  return s.maxMiles.toFixed(1) + " mi";
+}
+
+function renderSpreadRows(stats) {
+  const rows = Object.keys(stats)
+    .sort((a,b) => spreadForSuper(b).maxMiles - spreadForSuper(a).maxMiles)
+    .map(s => {
+      const sp = spreadForSuper(s);
+      const color = superColors[s] || superColors.Unassigned;
+      return `<tr>
+        <td><span class="dot" style="background:${color}"></span>${s}</td>
+        <td>${sp.communities}</td>
+        <td>${sp.maxMiles.toFixed(1)} mi</td>
+        <td>${sp.avgFromCenter.toFixed(1)} mi</td>
+        <td>${sp.read}</td>
+      </tr>`;
+    }).join("");
+
+  const el = document.getElementById("spreadRows");
+  if (el) el.innerHTML = rows;
+}
+
 function renderAll(){clearMap();const active=currentFilter==="All"?activeData:activeData.filter(x=>x.super===currentFilter);active.forEach(addActive);futureData.forEach(i=>addFuture(i,"Future"));potentialData.forEach(i=>addFuture(i,"Potential"));applyLayerToggles();renderTables(active,futureData,potentialData);fitVisibleMap()}
-function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderSuperCards(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats)}
-function renderSuperCards(stats){document.getElementById("superCards").innerHTML=Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v])=>{const color=superColors[s]||superColors.Unassigned,st=workloadStatus(v.total),activeClass=currentFilter===s?" active-filter":"";return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Communities<br><b>${v.communities}</b></div></div></div>`}).join("")}
+function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderSuperCards(allStats);renderSpreadRows(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats)}
+function renderSuperCards(stats){document.getElementById("superCards").innerHTML=Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v])=>{const color=superColors[s]||superColors.Unassigned,st=workloadStatus(v.total),activeClass=currentFilter===s?" active-filter":"";return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Spread<br><b>${spreadLabel(s)}</b></div></div></div>`}).join("")}
 function renderCommunityRows(active){document.getElementById("communityRows").innerHTML=active.slice().sort((a,b)=>(a.super+a.subdivision).localeCompare(b.super+b.subdivision)).map(loc=>`<tr><td><span class="dot" style="background:${superColors[loc.super]||superColors.Unassigned}"></span>${loc.subdivision}</td><td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td></tr>`).join("")}
 function renderOpportunityRows(future,potential,stats){const centroids={};Object.keys(stats).forEach(s=>{const pts=activeData.filter(a=>a.super===s);if(pts.length)centroids[s]={lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,lng:pts.reduce((sum,p)=>sum+p.lng,0)/pts.length,total:stats[s].total}});const capacityFit=Object.entries(stats).sort((a,b)=>a[1].total-b[1].total)[0]?.[0]||"";document.getElementById("opportunityRows").innerHTML=future.concat(potential).map(o=>{let closest="",min=Infinity;Object.entries(centroids).forEach(([s,c])=>{const d=haversine(o,c);if(d<min){min=d;closest=s}});let rec=closest&&capacityFit&&closest===capacityFit?closest:(closest&&capacityFit?closest+" / "+capacityFit:(closest||capacityFit||""));return `<tr><td>${o.community}</td><td>${o.lots||""}</td><td>${o.status||o.type||""}</td><td>${closest}</td><td>${capacityFit}</td><td><span class="recommendation">${rec}</span></td></tr>`}).join("")}
 function fitVisibleMap(){const groups=[baseGroups.active,baseGroups.future,baseGroups.potential].filter(g=>map.hasLayer(g)&&g.getLayers().length);if(groups.length){const bounds=L.featureGroup(groups).getBounds();if(bounds.isValid())map.fitBounds(bounds.pad(.18))}}
