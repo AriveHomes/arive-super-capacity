@@ -2,415 +2,85 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Arive Live Operations Dashboard</title>
+  <title>Arive Operations Dashboard V2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { margin:0; font-family: Arial, sans-serif; background:#f7f7f7; color:#222; }
-    .header { padding:18px 24px; background:#222; color:white; }
-    .header h1 { margin:0 0 6px 0; font-size:22px; }
-    .header p { margin:0; color:#d7d7d7; }
-    .wrap { display:grid; grid-template-columns: minmax(650px, 2fr) minmax(460px, 1fr); gap:16px; padding:16px; }
-    #map { height: 780px; border-radius:12px; box-shadow:0 1px 8px rgba(0,0,0,.18); background:#e9eef2; }
-    .panel { background:white; border-radius:12px; padding:16px; box-shadow:0 1px 8px rgba(0,0,0,.12); overflow:auto; max-height:780px; }
-    h2 { font-size:18px; margin:0 0 12px; }
-    table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
-    th, td { padding:8px 7px; border-bottom:1px solid #e8e8e8; text-align:right; }
-    th:first-child, td:first-child { text-align:left; }
-    th { background:#fafafa; font-weight:700; }
-    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
-    .metric { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin:14px 0; }
-    .card { background:#f5f7f9; border-radius:10px; padding:10px; }
-    .card .num { font-size:22px; font-weight:700; margin-top:4px; }
-    .small { color:#666; font-size:12px; line-height:1.35; }
-    .warn { background:#fff7e6; border:1px solid #ffe0a3; border-radius:10px; padding:10px; font-size:13px; margin:12px 0; }
-    .ok { background:#edf9ef; border:1px solid #bbe6c1; border-radius:10px; padding:10px; font-size:13px; margin:12px 0; }
-    .error { background:#fff0f0; border:1px solid #e0a0a0; border-radius:10px; padding:10px; color:#800; margin:12px 0; }
-    .legend { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:10px 0 14px; }
-    .legend div { font-size:13px; }
-    .map-label {
-      background:white; border:1px solid #999; border-radius:4px; padding:1px 4px;
-      box-shadow:0 1px 2px rgba(0,0,0,.22); text-align:center; white-space:nowrap; line-height:1.05;
-    }
-    .map-label .sub { font-weight:700; font-size:9.5px; }
-    .map-label .super { font-weight:700; font-size:8.5px; margin-top:1px; }
-    .leaflet-tooltip.arive-hover-tooltip {
-      background: rgba(255,255,255,0.96); border: 1px solid #666; border-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.25); color: #222; font-weight: 700;
-      padding: 3px 6px; font-size: 12px;
-    }
-    @media (max-width: 1050px) { .wrap { grid-template-columns:1fr; } #map { height:620px; } .panel { max-height:none; } }
+    :root{--bg:#f3f5f7;--panel:#fff;--text:#1f2933;--muted:#667085;--border:#e4e7ec;--green:#16a34a;--yellow:#d97706;--red:#dc2626}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    .topbar{background:linear-gradient(135deg,#1f2328,#2f3845);color:#fff;padding:18px 24px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+    .topbar h1{margin:0 0 6px;font-size:24px}.subtitle{color:#d0d7de;font-size:13px}.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .button{background:#fff;color:#1f2933;text-decoration:none;font-weight:700;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.25);box-shadow:0 1px 2px rgba(0,0,0,.18);cursor:pointer}
+    .button.dark{background:#111827;color:#fff;border:1px solid #374151}.status-pill{font-size:12px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:#e5e7eb;border:1px solid rgba(255,255,255,.18)}
+    .layout{display:grid;grid-template-columns:minmax(650px,2fr) minmax(460px,1fr);gap:16px;padding:16px}.map-card,.side-card{background:var(--panel);border-radius:14px;box-shadow:0 1px 8px rgba(16,24,40,.14);overflow:hidden}
+    #map{height:780px;width:100%;background:#e9eef2}.side-card{padding:16px;max-height:780px;overflow:auto}.section-title{font-size:17px;font-weight:800;margin:0 0 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .small{color:var(--muted);font-size:12px;line-height:1.35}.notice{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;border:1px solid #fed7aa;background:#fff7ed;color:#7c2d12}.notice.ok{border-color:#bbf7d0;background:#f0fdf4;color:#14532d}.notice.error{border-color:#fecaca;background:#fef2f2;color:#7f1d1d}
+    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}.summary-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px}.summary-card .label{color:var(--muted);font-size:12px;margin-bottom:5px}.summary-card .value{font-size:24px;font-weight:900}
+    .filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 14px}.filter-box{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:10px}.filter-box label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:700}select,input[type="checkbox"]{accent-color:#2563eb}select{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff;font-size:13px}.toggle-row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px;margin-top:8px}
+    .super-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.super-card{border:1px solid var(--border);border-left:6px solid #9ca3af;border-radius:12px;padding:11px;background:#fff;cursor:pointer;transition:.15s ease}.super-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,24,40,.12)}.super-card.active-filter{outline:2px solid #2563eb;background:#eff6ff}.super-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}.super-name{font-weight:900;font-size:15px}.badge{font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;background:#f3f4f6;color:#374151;white-space:nowrap}.badge.light{background:#dcfce7;color:#166534}.badge.balanced{background:#fef3c7;color:#92400e}.badge.heavy{background:#fee2e2;color:#991b1b}.super-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#475467}.super-metrics b{color:#111827;font-size:14px}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}th,td{padding:8px 7px;border-bottom:1px solid #eef2f6;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f8fafc;font-weight:900;color:#344054;position:sticky;top:0;z-index:1}tr:hover td{background:#f9fafb}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}.recommendation{display:inline-block;font-weight:800;border-radius:999px;padding:3px 7px;font-size:11px;background:#eff6ff;color:#1d4ed8}
+    .map-label{background:#fff;border:1px solid #999;border-radius:4px;padding:1px 4px;box-shadow:0 1px 2px rgba(0,0,0,.22);text-align:center;white-space:nowrap;line-height:1.05}.map-label .sub{font-weight:800;font-size:9.5px}.map-label .super{font-weight:800;font-size:8.5px;margin-top:1px}.leaflet-tooltip.arive-hover-tooltip{background:rgba(255,255,255,.97);border:1px solid #667085;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);color:#111827;font-weight:800;padding:5px 7px;font-size:12px}
+    @media(max-width:1050px){.layout{grid-template-columns:1fr}#map{height:620px}.side-card{max-height:none}}@media(max-width:650px){.summary-grid,.filters,.super-cards{grid-template-columns:1fr}.topbar{align-items:flex-start}}
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Arive Live Operations Dashboard</h1>
-    <p>Live Google Sheets version. Update the sheet, then refresh this dashboard.</p>
+  <div class="topbar">
+    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, active communities, future communities, and potential projects</div></div>
+    <div class="top-actions"><span class="status-pill" id="lastUpdated">Loading...</span><a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a><button class="button dark" onclick="location.reload()">Refresh Dashboard</button></div>
   </div>
-
-  <div class="wrap">
-    <div id="map"></div>
-    <div class="panel">
-      <h2>Capacity Summary</h2>
-      <div id="status" class="warn">Loading live data...</div>
-
-      <div class="metric">
-        <div class="card"><div class="small">Current weighted</div><div class="num" id="currentWU">—</div></div>
-        <div class="card"><div class="small">Upcoming digs</div><div class="num" id="upcomingDigs">—</div></div>
-        <div class="card"><div class="small">Total weighted</div><div class="num" id="totalWU">—</div></div>
-      </div>
-
-      <div class="legend" id="legend"></div>
-
-      <table>
-        <thead><tr><th>Super</th><th>Subs</th><th>Homes</th><th>TH</th><th>Digs</th><th>Current WU</th><th>Total WU</th><th>Share</th></tr></thead>
-        <tbody id="statsRows"></tbody>
-      </table>
-
-      <h2>Opportunity Queue</h2>
-      <table>
-        <thead><tr><th>Community</th><th>Lots</th><th>Status</th><th>Closest Super</th><th>Capacity Fit</th></tr></thead>
-        <tbody id="opportunityRows"></tbody>
-      </table>
-
-      <h2>Community Detail</h2>
-      <table>
-        <thead><tr><th>Subdivision</th><th>Super</th><th>Homes</th><th>TH</th><th>Digs</th><th>Total WU</th></tr></thead>
-        <tbody id="communityRows"></tbody>
-      </table>
+  <div class="layout">
+    <div class="map-card"><div id="map"></div></div>
+    <div class="side-card">
+      <div class="section-title">Capacity Summary</div><div id="status" class="notice">Loading live data from Google Sheets...</div>
+      <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
+      <div class="filters"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
+      <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
+      <div class="section-title">Opportunity Queue</div><div class="table-wrap"><table><thead><tr><th>Community</th><th>Lots</th><th>Status</th><th>Closest</th><th>Capacity</th><th>Recommendation</th></tr></thead><tbody id="opportunityRows"></tbody></table></div>
+      <div class="section-title">Community Detail</div><div class="table-wrap"><table><thead><tr><th>Subdivision</th><th>Super</th><th>Homes</th><th>TH</th><th>Digs</th><th>Total WU</th></tr></thead><tbody id="communityRows"></tbody></table></div>
     </div>
   </div>
-
 <script>
 'use strict';
-
-const SHEET_ID = "1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
-const OPEN_SHEET_BASE = "https://opensheet.elk.sh/" + SHEET_ID + "/";
-const TAB_ACTIVE = "Active Communities";
-const TAB_FUTURE = "Future Communities";
-const TAB_POTENTIAL = "Potential Projects";
-
-const superColors = {
-  "Burke":"#1f77b4",
-  "Manuel":"#ff7f0e",
-  "Greg":"#2ca02c",
-  "Deryck":"#d62728",
-  "Unassigned":"#7f7f7f"
-};
-
-let map, activeGroup, futureGroup, potentialGroup, labelGroup;
-
-function setStatus(message, type) {
-  const el = document.getElementById("status");
-  el.className = type || "warn";
-  el.innerHTML = message;
-}
-
-function norm(h) {
-  return String(h || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function val(row, names) {
-  const keys = Object.keys(row || {});
-  for (const name of names) {
-    const found = keys.find(k => norm(k) === norm(name));
-    if (found !== undefined) return row[found];
-  }
-  return "";
-}
-
-function num(x) {
-  if (x === null || x === undefined) return 0;
-  const cleaned = String(x).replace(/,/g, "").trim();
-  if (cleaned === "" || cleaned.toLowerCase() === "tbd") return 0;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function parseCoord(value) {
-  if (value === null || value === undefined) return NaN;
-  const text = String(value).trim().replace(/,$/, "");
-  const n = Number(text);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function parseLatLng(row) {
-  let latRaw = val(row, ["Latitude","Lat"]);
-  let lngRaw = val(row, ["Longitude","Long","Lng"]);
-
-  if (String(latRaw).includes(",")) {
-    const parts = String(latRaw).split(",");
-    latRaw = parts[0];
-    if (!lngRaw || String(lngRaw).trim() === "") lngRaw = parts[1];
-  }
-
-  const lat = parseCoord(latRaw);
-  const lng = parseCoord(lngRaw);
-  return Number.isFinite(lat) && Number.isFinite(lng) ? {lat,lng} : null;
-}
-
-async function fetchTab(tabName) {
-  const url = OPEN_SHEET_BASE + encodeURIComponent(tabName);
-  const res = await fetch(url, {cache: "no-store"});
-  if (!res.ok) throw new Error(tabName + " failed to load. HTTP " + res.status);
-  const data = await res.json();
-  if (!Array.isArray(data)) throw new Error(tabName + " did not return rows.");
-  return data;
-}
-
-function activeFromRow(row) {
-  const ll = parseLatLng(row);
-  if (!ll) return null;
-
-  const subdivision = String(val(row, ["Subdivision","Community","Name"])).trim();
-  if (!subdivision) return null;
-
-  const homes = num(val(row, ["Homes","Home Count","Current Homes"]));
-  const townhomes = num(val(row, ["Townhomes","Townhomes?","Townhome","TH"]));
-  const upcoming = num(val(row, ["Upcoming Digs","Upcoming","Digs"]));
-  const current = homes + townhomes * 0.5;
-
-  return {
-    subdivision,
-    address: String(val(row, ["Address","Location"])).trim(),
-    super: String(val(row, ["Superintendent","Super"])).trim() || "Unassigned",
-    homes,
-    townhomes,
-    upcoming,
-    current_weighted: current,
-    total_weighted: current + upcoming,
-    ...ll
-  };
-}
-
-function futureFromRow(row, type) {
-  const ll = parseLatLng(row);
-  if (!ll) return null;
-
-  const community = String(val(row, ["Community","Subdivision","Project","Name"])).trim();
-  if (!community) return null;
-
-  return {
-    community,
-    address: String(val(row, ["Address","Location","City"])).trim(),
-    status: String(val(row, ["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(),
-    lots: num(val(row, ["Lots","How Many Lots","Homes","Total Lots","Units"])),
-    type,
-    ...ll
-  };
-}
-
-function tooltip(item, type) {
-  const name = item.subdivision || item.community || "Community";
-  return `${type}: ${name}${item.super ? " • " + item.super : ""}${item.total_weighted !== undefined ? " • " + item.total_weighted.toFixed(1) + " WU" : ""}${item.lots ? " • " + item.lots + " lots" : ""}${item.status ? " • " + item.status : ""}`;
-}
-
-function hover(layer, item, type) {
-  layer.bindTooltip(tooltip(item, type), {
-    direction: "top",
-    offset: [0, -8],
-    opacity: 0.95,
-    sticky: true,
-    className: "arive-hover-tooltip"
-  });
-  return layer;
-}
-
-function initMap() {
-  map = L.map("map").setView([40.245, -111.79], 10);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors"
-  }).addTo(map);
-
-  activeGroup = L.featureGroup().addTo(map);
-  futureGroup = L.featureGroup().addTo(map);
-  potentialGroup = L.featureGroup().addTo(map);
-  labelGroup = L.layerGroup();
-
-  L.control.layers(null, {
-    "Active Communities": activeGroup,
-    "Future Communities": futureGroup,
-    "Potential Projects": potentialGroup,
-    "Zoom Labels": labelGroup
-  }).addTo(map);
-
-  map.on("zoomend", updateLabels);
-}
-
-function addActive(loc) {
-  const color = superColors[loc.super] || superColors.Unassigned;
-  const radius = Math.max(6, Math.min(26, 5 + loc.total_weighted * 0.85));
-  const popup = `<b>${loc.subdivision}</b><br>${loc.address || ""}<br><br>
-    <b>Super:</b> ${loc.super}<br>
-    <b>Homes:</b> ${loc.homes}<br>
-    <b>Townhomes:</b> ${loc.townhomes}<br>
-    <b>Upcoming digs:</b> ${loc.upcoming}<br>
-    <b>Current weighted:</b> ${loc.current_weighted.toFixed(1)}<br>
-    <b>Total weighted:</b> ${loc.total_weighted.toFixed(1)}`;
-
-  hover(L.circleMarker([loc.lat, loc.lng], {
-    radius, color, fillColor: color, fillOpacity: 0.60, weight: 2
-  }).bindPopup(popup), loc, "Active").addTo(activeGroup);
-
-  L.marker([loc.lat, loc.lng], {
-    icon: L.divIcon({
-      className: "",
-      html: `<div class="map-label" style="border-color:${color};">
-        <div class="sub">${loc.subdivision}</div>
-        <div class="super" style="color:${color};">${loc.super}</div>
-      </div>`,
-      iconSize: [64, 21],
-      iconAnchor: [32, 37]
-    })
-  }).addTo(labelGroup);
-}
-
-function addFuture(item, type) {
-  const popup = `<b>${item.community}</b><br>${item.address || ""}<br><br>
-    <b>Type:</b> ${type}<br>
-    <b>Status:</b> ${item.status || ""}<br>
-    <b>Lots:</b> ${item.lots || ""}`;
-
-  const symbol = type === "Future" ? "⭐" : "◆";
-  const style = type === "Future"
-    ? "font-size:24px;text-shadow:0 1px 3px #333;"
-    : "font-size:24px;color:#666;text-shadow:0 1px 3px #fff;";
-
-  const icon = L.divIcon({
-    className: "",
-    html: `<div style="${style}">${symbol}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13]
-  });
-
-  hover(L.marker([item.lat, item.lng], {icon}).bindPopup(popup), item, type)
-    .addTo(type === "Future" ? futureGroup : potentialGroup);
-}
-
-function updateLabels() {
-  if (map.getZoom() >= 12) {
-    if (!map.hasLayer(labelGroup)) map.addLayer(labelGroup);
-  } else {
-    if (map.hasLayer(labelGroup)) map.removeLayer(labelGroup);
-  }
-}
-
-function haversine(a, b) {
-  const R = 3958.8;
-  const dLat = (b.lat-a.lat) * Math.PI/180;
-  const dLng = (b.lng-a.lng) * Math.PI/180;
-  const lat1 = a.lat * Math.PI/180;
-  const lat2 = b.lat * Math.PI/180;
-  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-function render(active, future, potential) {
-  const stats = {};
-
-  active.forEach(loc => {
-    const s = loc.super || "Unassigned";
-    if (!stats[s]) stats[s] = {communities:0, homes:0, townhomes:0, upcoming:0, current:0, total:0};
-    stats[s].communities += 1;
-    stats[s].homes += loc.homes;
-    stats[s].townhomes += loc.townhomes;
-    stats[s].upcoming += loc.upcoming;
-    stats[s].current += loc.current_weighted;
-    stats[s].total += loc.total_weighted;
-  });
-
-  const total = Object.values(stats).reduce((sum, s) => sum + s.total, 0);
-  const current = Object.values(stats).reduce((sum, s) => sum + s.current, 0);
-  const digs = Object.values(stats).reduce((sum, s) => sum + s.upcoming, 0);
-
-  document.getElementById("currentWU").textContent = current.toFixed(1);
-  document.getElementById("upcomingDigs").textContent = digs.toFixed(0);
-  document.getElementById("totalWU").textContent = total.toFixed(1);
-
-  document.getElementById("legend").innerHTML = Object.keys(stats).sort().map(s =>
-    `<div><span class="dot" style="background:${superColors[s] || superColors.Unassigned}"></span>${s}</div>`
-  ).join("");
-
-  document.getElementById("statsRows").innerHTML = Object.entries(stats)
-    .sort((a,b) => b[1].total - a[1].total)
-    .map(([s,v]) => `<tr>
-      <td><span class="dot" style="background:${superColors[s] || superColors.Unassigned}"></span>${s}</td>
-      <td>${v.communities}</td><td>${v.homes}</td><td>${v.townhomes}</td><td>${v.upcoming}</td>
-      <td>${v.current.toFixed(1)}</td><td>${v.total.toFixed(1)}</td><td>${total ? (v.total/total*100).toFixed(1) : "0.0"}%</td>
-    </tr>`).join("");
-
-  document.getElementById("communityRows").innerHTML = active
-    .slice()
-    .sort((a,b) => (a.super+a.subdivision).localeCompare(b.super+b.subdivision))
-    .map(loc => `<tr>
-      <td><span class="dot" style="background:${superColors[loc.super] || superColors.Unassigned}"></span>${loc.subdivision}</td>
-      <td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td>
-    </tr>`).join("");
-
-  const centroids = {};
-  Object.keys(stats).forEach(s => {
-    const pts = active.filter(a => a.super === s);
-    if (pts.length) {
-      centroids[s] = {
-        lat: pts.reduce((sum,p) => sum + p.lat, 0) / pts.length,
-        lng: pts.reduce((sum,p) => sum + p.lng, 0) / pts.length
-      };
-    }
-  });
-
-  const capacityFit = Object.entries(stats).sort((a,b) => a[1].total - b[1].total)[0]?.[0] || "";
-
-  document.getElementById("opportunityRows").innerHTML = future.concat(potential).map(o => {
-    let closest = "", min = Infinity;
-    Object.entries(centroids).forEach(([s,c]) => {
-      const d = haversine(o, c);
-      if (d < min) { min = d; closest = s; }
-    });
-    return `<tr><td>${o.community}</td><td>${o.lots || ""}</td><td>${o.status || o.type || ""}</td><td>${closest}</td><td>${capacityFit}</td></tr>`;
-  }).join("");
-}
-
-async function init() {
-  try {
-    initMap();
-
-    const [activeRows, futureRows, potentialRows] = await Promise.all([
-      fetchTab(TAB_ACTIVE),
-      fetchTab(TAB_FUTURE),
-      fetchTab(TAB_POTENTIAL)
-    ]);
-
-    const active = activeRows.map(activeFromRow).filter(x => x);
-    const future = futureRows.map(r => futureFromRow(r, "Future")).filter(x => x);
-    const potential = potentialRows.map(r => futureFromRow(r, "Potential")).filter(x => x);
-
-    if (!active.length) throw new Error("No active communities found. Check Latitude/Longitude and tab headers.");
-
-    active.forEach(addActive);
-    future.forEach(item => addFuture(item, "Future"));
-    potential.forEach(item => addFuture(item, "Potential"));
-    render(active, future, potential);
-
-    const allLayers = [activeGroup, futureGroup, potentialGroup].filter(g => g.getLayers().length);
-    if (allLayers.length) {
-      const bounds = L.featureGroup(allLayers).getBounds();
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.18));
-    }
-    updateLabels();
-
-    setStatus(`Live data loaded: ${active.length} active, ${future.length} future, ${potential.length} potential. Refresh after editing Google Sheets.`, "ok");
-  } catch (err) {
-    console.error(err);
-    setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`, "error");
-  }
-}
-
-window.addEventListener("error", event => {
-  setStatus(`<b>JavaScript error:</b><br>${event.message}`, "error");
-});
-
+const SHEET_ID="1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
+const OPEN_SHEET_BASE="https://opensheet.elk.sh/"+SHEET_ID+"/";
+const TAB_ACTIVE="Active Communities",TAB_FUTURE="Future Communities",TAB_POTENTIAL="Potential Projects";
+const THRESHOLDS={lightMax:14,balancedMax:22};
+const superColors={"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
+let map,baseGroups={},activeData=[],futureData=[],potentialData=[],currentFilter="All";
+function setStatus(m,t){const el=document.getElementById("status");el.className="notice "+(t||"");el.innerHTML=m}
+function norm(h){return String(h||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function val(row,names){const keys=Object.keys(row||{});for(const name of names){const found=keys.find(k=>norm(k)===norm(name));if(found!==undefined)return row[found]}return""}
+function num(x){if(x===null||x===undefined)return 0;const cleaned=String(x).replace(/,/g,"").trim();if(cleaned===""||cleaned.toLowerCase()==="tbd")return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0}
+function parseCoord(v){if(v===null||v===undefined)return NaN;const n=Number(String(v).trim().replace(/,$/,""));return Number.isFinite(n)?n:NaN}
+function parseLatLng(row){let latRaw=val(row,["Latitude","Lat"]),lngRaw=val(row,["Longitude","Long","Lng"]);if(String(latRaw).includes(",")){const parts=String(latRaw).split(",");latRaw=parts[0];if(!lngRaw||String(lngRaw).trim()==="")lngRaw=parts[1]}const lat=parseCoord(latRaw),lng=parseCoord(lngRaw);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null}
+async function fetchTab(tabName){const url=OPEN_SHEET_BASE+encodeURIComponent(tabName);const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error(tabName+" failed to load. HTTP "+res.status);const data=await res.json();if(!Array.isArray(data))throw new Error(tabName+" did not return rows.");return data}
+function normalizeSuper(s){const clean=String(s||"Unassigned").trim();const found=Object.keys(superColors).find(x=>x.toLowerCase()===clean.toLowerCase());return found||clean}
+function activeFromRow(row){const ll=parseLatLng(row);if(!ll)return null;const subdivision=String(val(row,["Subdivision","Community","Name"])).trim();if(!subdivision)return null;const homes=num(val(row,["Homes","Home Count","Current Homes"])),townhomes=num(val(row,["Townhomes","Townhomes?","Townhome","TH"])),upcoming=num(val(row,["Upcoming Digs","Upcoming","Digs"])),current=homes+townhomes*.5;return{subdivision,address:String(val(row,["Address","Location"])).trim(),super:normalizeSuper(String(val(row,["Superintendent","Super"])).trim()||"Unassigned"),homes,townhomes,upcoming,current_weighted:current,total_weighted:current+upcoming,...ll}}
+function futureFromRow(row,type){const ll=parseLatLng(row);if(!ll)return null;const community=String(val(row,["Community","Subdivision","Project","Name"])).trim();if(!community)return null;return{community,address:String(val(row,["Address","Location","City"])).trim(),status:String(val(row,["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(),lots:num(val(row,["Lots","How Many Lots","Homes","Total Lots","Units"])),type,...ll}}
+function workloadStatus(total){if(total<=THRESHOLDS.lightMax)return"light";if(total<=THRESHOLDS.balancedMax)return"balanced";return"heavy"}
+function statusLabel(total){const s=workloadStatus(total);return s==="light"?"Light":s==="balanced"?"Balanced":"Heavy"}
+function tooltip(item,type){const name=item.subdivision||item.community||"Community";return `${type}: ${name}${item.super?" • "+item.super:""}${item.total_weighted!==undefined?" • "+item.total_weighted.toFixed(1)+" WU":""}${item.lots?" • "+item.lots+" lots":""}${item.status?" • "+item.status:""}`}
+function hover(layer,item,type){layer.bindTooltip(tooltip(item,type),{direction:"top",offset:[0,-8],opacity:.95,sticky:true,className:"arive-hover-tooltip"});return layer}
+function initMap(){map=L.map("map").setView([40.245,-111.79],10);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);baseGroups.active=L.featureGroup().addTo(map);baseGroups.future=L.featureGroup().addTo(map);baseGroups.potential=L.featureGroup().addTo(map);baseGroups.labels=L.layerGroup();L.control.layers(null,{"Active Communities":baseGroups.active,"Future Communities":baseGroups.future,"Potential Projects":baseGroups.potential,"Zoom Labels":baseGroups.labels}).addTo(map);map.on("zoomend",updateLabels)}
+function clearMap(){Object.values(baseGroups).forEach(g=>g.clearLayers())}
+function addActive(loc){const color=superColors[loc.super]||superColors.Unassigned,radius=Math.max(6,Math.min(28,5+loc.total_weighted*.85));const popup=`<b>${loc.subdivision}</b><br>${loc.address||""}<br><br><b>Super:</b> ${loc.super}<br><b>Homes:</b> ${loc.homes}<br><b>Townhomes:</b> ${loc.townhomes}<br><b>Upcoming digs:</b> ${loc.upcoming}<br><b>Current weighted:</b> ${loc.current_weighted.toFixed(1)}<br><b>Total weighted:</b> ${loc.total_weighted.toFixed(1)}<br><b>Status:</b> ${statusLabel(loc.total_weighted)}`;hover(L.circleMarker([loc.lat,loc.lng],{radius,color,fillColor:color,fillOpacity:.62,weight:2}).bindPopup(popup),loc,"Active").addTo(baseGroups.active);L.marker([loc.lat,loc.lng],{icon:L.divIcon({className:"",html:`<div class="map-label" style="border-color:${color};"><div class="sub">${loc.subdivision}</div><div class="super" style="color:${color};">${loc.super}</div></div>`,iconSize:[64,21],iconAnchor:[32,37]})}).addTo(baseGroups.labels)}
+function addFuture(item,type){const popup=`<b>${item.community}</b><br>${item.address||""}<br><br><b>Type:</b> ${type}<br><b>Status:</b> ${item.status||""}<br><b>Lots:</b> ${item.lots||""}`;const symbol=type==="Future"?"⭐":"◆";const style=type==="Future"?"font-size:24px;text-shadow:0 1px 3px #333;":"font-size:24px;color:#666;text-shadow:0 1px 3px #fff;";const icon=L.divIcon({className:"",html:`<div style="${style}">${symbol}</div>`,iconSize:[26,26],iconAnchor:[13,13]});hover(L.marker([item.lat,item.lng],{icon}).bindPopup(popup),item,type).addTo(type==="Future"?baseGroups.future:baseGroups.potential)}
+function updateLabels(){const show=document.getElementById("toggleLabels").checked||map.getZoom()>=12;if(show){if(!map.hasLayer(baseGroups.labels))map.addLayer(baseGroups.labels)}else{if(map.hasLayer(baseGroups.labels))map.removeLayer(baseGroups.labels)}}
+function applyLayerToggles(){[["toggleActive",baseGroups.active],["toggleFuture",baseGroups.future],["togglePotential",baseGroups.potential]].forEach(([id,g])=>{const checked=document.getElementById(id).checked;if(checked&&!map.hasLayer(g))map.addLayer(g);if(!checked&&map.hasLayer(g))map.removeLayer(g)});updateLabels()}
+function haversine(a,b){const R=3958.8,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,lat1=a.lat*Math.PI/180,lat2=b.lat*Math.PI/180,h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function statsFor(active){const stats={};active.forEach(loc=>{const s=loc.super||"Unassigned";if(!stats[s])stats[s]={communities:0,homes:0,townhomes:0,upcoming:0,current:0,total:0};stats[s].communities++;stats[s].homes+=loc.homes;stats[s].townhomes+=loc.townhomes;stats[s].upcoming+=loc.upcoming;stats[s].current+=loc.current_weighted;stats[s].total+=loc.total_weighted});return stats}
+function renderAll(){clearMap();const active=currentFilter==="All"?activeData:activeData.filter(x=>x.super===currentFilter);active.forEach(addActive);futureData.forEach(i=>addFuture(i,"Future"));potentialData.forEach(i=>addFuture(i,"Potential"));applyLayerToggles();renderTables(active,futureData,potentialData);fitVisibleMap()}
+function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderSuperCards(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats)}
+function renderSuperCards(stats){document.getElementById("superCards").innerHTML=Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v])=>{const color=superColors[s]||superColors.Unassigned,st=workloadStatus(v.total),activeClass=currentFilter===s?" active-filter":"";return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Communities<br><b>${v.communities}</b></div></div></div>`}).join("")}
+function renderCommunityRows(active){document.getElementById("communityRows").innerHTML=active.slice().sort((a,b)=>(a.super+a.subdivision).localeCompare(b.super+b.subdivision)).map(loc=>`<tr><td><span class="dot" style="background:${superColors[loc.super]||superColors.Unassigned}"></span>${loc.subdivision}</td><td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td></tr>`).join("")}
+function renderOpportunityRows(future,potential,stats){const centroids={};Object.keys(stats).forEach(s=>{const pts=activeData.filter(a=>a.super===s);if(pts.length)centroids[s]={lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,lng:pts.reduce((sum,p)=>sum+p.lng,0)/pts.length,total:stats[s].total}});const capacityFit=Object.entries(stats).sort((a,b)=>a[1].total-b[1].total)[0]?.[0]||"";document.getElementById("opportunityRows").innerHTML=future.concat(potential).map(o=>{let closest="",min=Infinity;Object.entries(centroids).forEach(([s,c])=>{const d=haversine(o,c);if(d<min){min=d;closest=s}});let rec=closest&&capacityFit&&closest===capacityFit?closest:(closest&&capacityFit?closest+" / "+capacityFit:(closest||capacityFit||""));return `<tr><td>${o.community}</td><td>${o.lots||""}</td><td>${o.status||o.type||""}</td><td>${closest}</td><td>${capacityFit}</td><td><span class="recommendation">${rec}</span></td></tr>`}).join("")}
+function fitVisibleMap(){const groups=[baseGroups.active,baseGroups.future,baseGroups.potential].filter(g=>map.hasLayer(g)&&g.getLayers().length);if(groups.length){const bounds=L.featureGroup(groups).getBounds();if(bounds.isValid())map.fitBounds(bounds.pad(.18))}}
+function populateFilters(){const select=document.getElementById("superFilter"),supers=Array.from(new Set(activeData.map(x=>x.super))).sort();select.innerHTML='<option value="All">All Superintendents</option>'+supers.map(s=>`<option value="${s}">${s}</option>`).join("")}
+function selectSuper(s){currentFilter=currentFilter===s?"All":s;document.getElementById("superFilter").value=currentFilter;renderAll()}
+function wireEvents(){document.getElementById("superFilter").addEventListener("change",e=>{currentFilter=e.target.value;renderAll()});["toggleActive","toggleFuture","togglePotential","toggleLabels"].forEach(id=>{document.getElementById(id).addEventListener("change",()=>{applyLayerToggles();if(id!=="toggleLabels")fitVisibleMap()})})}
+async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found. Check Latitude/Longitude and tab headers.");populateFilters();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
+window.addEventListener("error",event=>{setStatus(`<b>JavaScript error:</b><br>${event.message}`,"error")});
 init();
 </script>
 </body>
