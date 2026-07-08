@@ -31,8 +31,8 @@
     .sim-result{border:1px solid var(--border);background:#f8fafc;border-radius:12px;padding:10px;margin-bottom:16px;font-size:13px}
     .impact-row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;gap:8px}
     .impact-row:last-child{border-bottom:none}
-    .forecast-table th,.forecast-table td{text-align:center}
-    .forecast-table th:first-child,.forecast-table td:first-child{text-align:left}
+    .forecast-table th,.forecast-table td{-align:center}
+    .forecast-table th:first-child,.forecast-table td:first-child{-align:left}
     .heat{font-weight:900;border-radius:999px;padding:4px 7px;display:inline-block;min-width:58px}
     .heat.light{background:#dcfce7;color:#166534}
     .heat.balanced{background:#fef3c7;color:#92400e}
@@ -112,7 +112,7 @@ function val(row,names){const keys=Object.keys(row||{});for(const name of names)
 function num(x){if(x===null||x===undefined)return 0;const cleaned=String(x).replace(/,/g,"").trim();if(cleaned===""||cleaned.toLowerCase()==="tbd")return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0}
 function parseCoord(v){if(v===null||v===undefined)return NaN;const n=Number(String(v).trim().replace(/,$/,""));return Number.isFinite(n)?n:NaN}
 function parseLatLng(row){let latRaw=val(row,["Latitude","Lat"]),lngRaw=val(row,["Longitude","Long","Lng"]);if(String(latRaw).includes(",")){const parts=String(latRaw).split(",");latRaw=parts[0];if(!lngRaw||String(lngRaw).trim()==="")lngRaw=parts[1]}const lat=parseCoord(latRaw),lng=parseCoord(lngRaw);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null}
-function parseCSV(text) {
+function parseCSV() {
   const rows = [];
   let row = [], cell = "", inQuotes = false;
   for (let i = 0; i < text.length; i++) {
