@@ -38,6 +38,11 @@
     .heat.balanced{background:#fef3c7;color:#92400e}
     .heat.heavy{background:#fee2e2;color:#991b1b}
 
+    
+    .diagnostic-panel{border:1px solid #c7d2fe;background:#eef2ff;color:#1e1b4b;border-radius:12px;padding:10px;margin-bottom:16px;font-size:12px}
+    .diagnostic-panel h3{margin:0 0 8px;font-size:14px}
+    .diagnostic-panel pre{white-space:pre-wrap;background:white;border:1px solid #c7d2fe;border-radius:8px;padding:8px;max-height:240px;overflow:auto;margin:0;font-size:11px}
+
     @media(max-width:1050px){.layout{grid-template-columns:1fr}#map{height:620px}.side-card{max-height:none}}@media(max-width:650px){.summary-grid,.filters,.super-cards{grid-template-columns:1fr}.topbar{align-items:flex-start}}
   </style>
 </head>
@@ -50,6 +55,10 @@
     <div class="map-card"><div id="map"></div></div>
     <div class="side-card">
       <div class="section-title">Capacity Summary</div><div id="status" class="notice">Loading live data from Google Sheets...</div>
+      <div class="diagnostic-panel">
+        <h3>Data Connection Diagnostics</h3>
+        <pre id="diagnostics">Starting diagnostics...</pre>
+      </div>
       <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
       
       <div class="section-title">Operations Alerts</div>
@@ -106,6 +115,14 @@ const TAB_ACTIVE="Active Communities",TAB_FUTURE="Future Communities",TAB_POTENT
 const THRESHOLDS={lightMax:14,balancedMax:22};
 const superColors={"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
 let map,baseGroups={},activeData=[],futureData=[],potentialData=[],currentFilter="All";
+let diagnosticLines=[];
+function diag(msg,obj){
+  const line = obj === undefined ? msg : msg + " " + JSON.stringify(obj, null, 2);
+  diagnosticLines.push(line);
+  const el=document.getElementById("diagnostics");
+  if(el) el.textContent=diagnosticLines.join("\n\n");
+  console.log("[ARIVE DIAG]", msg, obj || "");
+}
 function setStatus(m,t){const el=document.getElementById("status");el.className="notice "+(t||"");el.innerHTML=m}
 function norm(h){return String(h||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
 function val(row,names){const keys=Object.keys(row||{});for(const name of names){const found=keys.find(k=>norm(k)===norm(name));if(found!==undefined)return row[found]}return""}
@@ -162,38 +179,57 @@ function looksUsable(tabName, data) {
   if (data.length === 1 && Object.keys(data[0]).some(k => norm(k).includes("error"))) return false;
 
   if (tabName === TAB_ACTIVE) {
-    return data.some(r => activeFromRow(r));
+    const usableCount = data.map(r => activeFromRow(r)).filter(x => x).length;
+    diag("Usable active rows found: " + usableCount + " out of " + data.length);
+    if (data[0]) diag("Active row parse test:", {parsed: activeFromRow(data[0]), source: data[0]});
+    return usableCount > 0;
   }
-  return data.some(r => futureFromRow(r, tabName === TAB_FUTURE ? "Future" : "Potential"));
+  const usableCount = data.map(r => futureFromRow(r, tabName === TAB_FUTURE ? "Future" : "Potential")).filter(x => x).length;
+  diag("Usable " + tabName + " rows found: " + usableCount + " out of " + data.length);
+  return usableCount > 0;
 }
 
 async function tryOpenSheet(tabName) {
   const url = OPEN_SHEET_BASE + encodeURIComponent(tabName);
+  diag("Trying OpenSheet for " + tabName + ":", url);
   const res = await fetch(url, {cache:"no-store"});
   if (!res.ok) throw new Error("OpenSheet HTTP " + res.status);
   const data = await res.json();
   if (!Array.isArray(data)) throw new Error("OpenSheet did not return rows");
+  diag("OpenSheet rows for " + tabName + ": " + data.length);
+  diag("OpenSheet first row keys for " + tabName + ":", data[0] ? Object.keys(data[0]) : []);
+  diag("OpenSheet first row sample for " + tabName + ":", data[0] || {});
   if (!looksUsable(tabName, data)) throw new Error("OpenSheet returned rows but they did not match the dashboard headers");
   return data;
 }
 
 async function tryGvizCSV(tabName) {
   const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName);
+  diag("Trying GViz CSV for " + tabName + ":", url);
   const res = await fetch(url, {cache:"no-store"});
   if (!res.ok) throw new Error("GViz HTTP " + res.status);
   const text = await res.text();
+  diag("GViz raw text preview for " + tabName + ":", text.slice(0,500));
   const data = rowsToObjects(parseCSV(text));
+  diag("GViz parsed rows for " + tabName + ": " + data.length);
+  diag("GViz first row keys for " + tabName + ":", data[0] ? Object.keys(data[0]) : []);
+  diag("GViz first row sample for " + tabName + ":", data[0] || {});
   if (!looksUsable(tabName, data)) throw new Error("GViz returned rows but they did not match the dashboard headers");
   return data;
 }
 
 async function tryPublishedCSV(tabName) {
   const url = PUBLISHED_CSV_URLS[tabName];
+  diag("Trying Published CSV for " + tabName + ":", url);
   if (!url) throw new Error("No published CSV URL for " + tabName);
   const res = await fetch(url, {cache:"no-store"});
   if (!res.ok) throw new Error("Published CSV HTTP " + res.status);
   const text = await res.text();
+  diag("Published CSV raw text preview for " + tabName + ":", text.slice(0,500));
   const data = rowsToObjects(parseCSV(text));
+  diag("Published CSV parsed rows for " + tabName + ": " + data.length);
+  diag("Published CSV first row keys for " + tabName + ":", data[0] ? Object.keys(data[0]) : []);
+  diag("Published CSV first row sample for " + tabName + ":", data[0] || {});
   if (!looksUsable(tabName, data)) throw new Error("Published CSV returned rows but they did not match the dashboard headers");
   return data;
 }
