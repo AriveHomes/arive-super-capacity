@@ -2,144 +2,116 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>ARIVE DIAGNOSTIC DASHBOARD - DO NOT USE OLD V2</title>
+  <title>Arive Operations Dashboard V5</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f6f8;
-      color: #111827;
-    }
-    .header {
-      background: #7c2d12;
-      color: white;
-      padding: 18px 22px;
-    }
-    .header h1 {
-      margin: 0 0 6px;
-      font-size: 26px;
-    }
-    .header p {
-      margin: 0;
-      font-size: 14px;
-      color: #ffedd5;
-    }
-    .wrap {
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 8px rgba(0,0,0,.08);
-      padding: 16px;
-    }
-    .danger {
-      border: 2px solid #dc2626;
-      background: #fef2f2;
-      color: #7f1d1d;
-    }
-    .ok {
-      border: 2px solid #16a34a;
-      background: #f0fdf4;
-      color: #14532d;
-    }
-    .warn {
-      border: 2px solid #d97706;
-      background: #fff7ed;
-      color: #7c2d12;
-    }
-    pre {
-      white-space: pre-wrap;
-      background: #111827;
-      color: #d1fae5;
-      padding: 12px;
-      border-radius: 8px;
-      overflow: auto;
-      max-height: 520px;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    th, td {
-      border-bottom: 1px solid #e5e7eb;
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background: #f9fafb;
-    }
-    .button {
-      display: inline-block;
-      background: #111827;
-      color: white;
-      text-decoration: none;
-      padding: 9px 12px;
-      border-radius: 8px;
-      margin-right: 8px;
-      font-weight: 700;
-    }
+    :root{--bg:#f3f5f7;--panel:#fff;--text:#1f2933;--muted:#667085;--border:#e4e7ec;--green:#16a34a;--yellow:#d97706;--red:#dc2626}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+    .topbar{background:linear-gradient(135deg,#1f2328,#2f3845);color:#fff;padding:18px 24px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}
+    .topbar h1{margin:0 0 6px;font-size:24px}.subtitle{color:#d0d7de;font-size:13px}.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .button{background:#fff;color:#1f2933;text-decoration:none;font-weight:700;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.25);box-shadow:0 1px 2px rgba(0,0,0,.18);cursor:pointer}
+    .button.dark{background:#111827;color:#fff;border:1px solid #374151}.status-pill{font-size:12px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:#e5e7eb;border:1px solid rgba(255,255,255,.18)}
+    .layout{display:grid;grid-template-columns:minmax(650px,2fr) minmax(460px,1fr);gap:16px;padding:16px}.map-card,.side-card{background:var(--panel);border-radius:14px;box-shadow:0 1px 8px rgba(16,24,40,.14);overflow:hidden}
+    #map{height:780px;width:100%;background:#e9eef2}.side-card{padding:16px;max-height:780px;overflow:auto}.section-title{font-size:17px;font-weight:800;margin:0 0 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .small{color:var(--muted);font-size:12px;line-height:1.35}.notice{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;border:1px solid #fed7aa;background:#fff7ed;color:#7c2d12}.notice.ok{border-color:#bbf7d0;background:#f0fdf4;color:#14532d}.notice.error{border-color:#fecaca;background:#fef2f2;color:#7f1d1d}
+    .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}.summary-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px}.summary-card .label{color:var(--muted);font-size:12px;margin-bottom:5px}.summary-card .value{font-size:24px;font-weight:900}
+    .filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 14px}.filter-box{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:10px}.filter-box label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:700}select,input[type="checkbox"]{accent-color:#2563eb}select{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff;font-size:13px}.toggle-row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px;margin-top:8px}
+    .super-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.super-card{border:1px solid var(--border);border-left:6px solid #9ca3af;border-radius:12px;padding:11px;background:#fff;cursor:pointer;transition:.15s ease}.super-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,24,40,.12)}.super-card.active-filter{outline:2px solid #2563eb;background:#eff6ff}.super-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}.super-name{font-weight:900;font-size:15px}.badge{font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;background:#f3f4f6;color:#374151;white-space:nowrap}.badge.light{background:#dcfce7;color:#166534}.badge.balanced{background:#fef3c7;color:#92400e}.badge.heavy{background:#fee2e2;color:#991b1b}.super-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#475467}.super-metrics b{color:#111827;font-size:14px}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}th,td{padding:8px 7px;border-bottom:1px solid #eef2f6;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{background:#f8fafc;font-weight:900;color:#344054;position:sticky;top:0;z-index:1}tr:hover td{background:#f9fafb}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}.recommendation{display:inline-block;font-weight:800;border-radius:999px;padding:3px 7px;font-size:11px;background:#eff6ff;color:#1d4ed8}
+    .map-label{background:#fff;border:1px solid #999;border-radius:4px;padding:1px 4px;box-shadow:0 1px 2px rgba(0,0,0,.22);text-align:center;white-space:nowrap;line-height:1.05}.map-label .sub{font-weight:800;font-size:9.5px}.map-label .super{font-weight:800;font-size:8.5px;margin-top:1px}.leaflet-tooltip.arive-hover-tooltip{background:rgba(255,255,255,.97);border:1px solid #667085;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);color:#111827;font-weight:800;padding:5px 7px;font-size:12px}
+    
+    .alert-list{display:grid;gap:8px;margin-bottom:16px}
+    .alert-item{border-radius:10px;padding:10px 11px;font-size:13px;border:1px solid var(--border);background:#f8fafc}
+    .alert-item.warning{background:#fff7ed;border-color:#fed7aa;color:#7c2d12}
+    .alert-item.danger{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+    .alert-item.good{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+    .sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .sim-result{border:1px solid var(--border);background:#f8fafc;border-radius:12px;padding:10px;margin-bottom:16px;font-size:13px}
+    .impact-row{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:6px 0;gap:8px}
+    .impact-row:last-child{border-bottom:none}
+    .forecast-table th,.forecast-table td{text-align:center}
+    .forecast-table th:first-child,.forecast-table td:first-child{text-align:left}
+    .heat{font-weight:900;border-radius:999px;padding:4px 7px;display:inline-block;min-width:58px}
+    .heat.light{background:#dcfce7;color:#166534}
+    .heat.balanced{background:#fef3c7;color:#92400e}
+    .heat.heavy{background:#fee2e2;color:#991b1b}
+
+    @media(max-width:1050px){.layout{grid-template-columns:1fr}#map{height:620px}.side-card{max-height:none}}@media(max-width:650px){.summary-grid,.filters,.super-cards{grid-template-columns:1fr}.topbar{align-items:flex-start}}
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>ARIVE DIAGNOSTIC DASHBOARD</h1>
-    <p>This is intentionally ugly. If you see this orange/brown header, the diagnostic file uploaded correctly.</p>
+  <div class="topbar">
+    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent capacity, alerts, what-if planning, forecast, territory spread, and pipeline map</div></div>
+    <div class="top-actions"><span class="status-pill" id="lastUpdated">Loading...</span><a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a><button class="button dark" onclick="location.reload()">Refresh Dashboard</button></div>
   </div>
+  <div class="layout">
+    <div class="map-card"><div id="map"></div></div>
+    <div class="side-card">
+      <div class="section-title">Capacity Summary</div><div id="status" class="notice">Loading live data from Google Sheets...</div>
+      <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
+      
+      <div class="section-title">Operations Alerts</div>
+      <div class="alert-list" id="alertList"></div>
 
-  <div class="wrap">
-    <div class="card warn">
-      <b>Important:</b> This page is only for troubleshooting the Google Sheet connection. Once we see the diagnostic results, I will build the normal dashboard again.
-      <br><br>
-      <a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a>
-      <a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/gviz/tq?tqx=out:csv&sheet=Active%20Communities" target="_blank">Test Active CSV</a>
-    </div>
+      <div class="section-title">What If Simulator <span class="small">Preview only — does not change the Google Sheet</span></div>
+      <div class="sim-grid">
+        <div class="filter-box">
+          <label for="simCommunity">Move Community</label>
+          <select id="simCommunity"></select>
+        </div>
+        <div class="filter-box">
+          <label for="simTo">Move To</label>
+          <select id="simTo"></select>
+        </div>
+      </div>
+      <div class="sim-result" id="simResult">Select a community and superintendent to preview impact.</div>
 
-    <div id="summary" class="card">Starting diagnostics...</div>
+      <div class="section-title">Month-by-Month Forecast <span class="small">Uses sheet month columns when available</span></div>
+      <div class="table-wrap">
+        <table class="forecast-table">
+          <thead id="forecastHead"></thead>
+          <tbody id="forecastRows"></tbody>
+        </table>
+      </div>
 
-    <div class="card">
-      <h2>Data Connection Diagnostics</h2>
-      <pre id="log">Loading...</pre>
-    </div>
+      <div class="filters"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
+      <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
+      
+      <div class="section-title">Territory Spread <span class="small">How far each super is spread geographically</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Super</th><th>Communities</th><th>Furthest Spread</th><th>Avg From Center</th><th>Read</th></tr>
+          </thead>
+          <tbody id="spreadRows"></tbody>
+        </table>
+      </div>
 
-    <div class="card">
-      <h2>Parsed Active Communities Preview</h2>
-      <div id="preview">Nothing parsed yet.</div>
+      <div class="section-title">Opportunity Queue</div><div class="table-wrap"><table><thead><tr><th>Community</th><th>Lots</th><th>Status</th><th>Closest</th><th>Capacity</th><th>Recommendation</th></tr></thead><tbody id="opportunityRows"></tbody></table></div>
+      <div class="section-title">Community Detail</div><div class="table-wrap"><table><thead><tr><th>Subdivision</th><th>Super</th><th>Homes</th><th>TH</th><th>Digs</th><th>Total WU</th></tr></thead><tbody id="communityRows"></tbody></table></div>
     </div>
   </div>
-
 <script>
-const SHEET_ID = "1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
-const TABS = ["Active Communities", "Future Communities", "Potential Projects"];
-const PUBLISHED_CSV_URLS = {
+'use strict';
+const SHEET_ID="1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
+const OPEN_SHEET_BASE="https://opensheet.elk.sh/"+SHEET_ID+"/";
+const PUBLISHED_CSV_URLS={
   "Active Communities":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=555948458&single=true&output=csv",
   "Future Communities":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=846399466&single=true&output=csv",
   "Potential Projects":"https://docs.google.com/spreadsheets/d/e/2PACX-1vTNfY6FV-yPnEpLEa37avBRrtGhKfzhVjEbv6U2ckDwWBoPcXhJnyvhGOe11jCjNdBjGeMjTBf9LFZG/pub?gid=1220585989&single=true&output=csv"
 };
-
-let lines = [];
-function log(msg, obj) {
-  const extra = obj === undefined ? "" : "\n" + JSON.stringify(obj, null, 2);
-  lines.push(msg + extra);
-  document.getElementById("log").textContent = lines.join("\n\n");
-  console.log(msg, obj || "");
-}
-
-function norm(h) {
-  return String(h || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
+const TAB_ACTIVE="Active Communities",TAB_FUTURE="Future Communities",TAB_POTENTIAL="Potential Projects";
+const THRESHOLDS={lightMax:14,balancedMax:22};
+const superColors={"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
+let map,baseGroups={},activeData=[],futureData=[],potentialData=[],currentFilter="All";
+function setStatus(m,t){const el=document.getElementById("status");el.className="notice "+(t||"");el.innerHTML=m}
+function norm(h){return String(h||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function val(row,names){const keys=Object.keys(row||{});for(const name of names){const found=keys.find(k=>norm(k)===norm(name));if(found!==undefined)return row[found]}return""}
+function num(x){if(x===null||x===undefined)return 0;const cleaned=String(x).replace(/,/g,"").trim();if(cleaned===""||cleaned.toLowerCase()==="tbd")return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0}
+function parseCoord(v){if(v===null||v===undefined)return NaN;const n=Number(String(v).trim().replace(/,$/,""));return Number.isFinite(n)?n:NaN}
+function parseLatLng(row){let latRaw=val(row,["Latitude","Lat"]),lngRaw=val(row,["Longitude","Long","Lng"]);if(String(latRaw).includes(",")){const parts=String(latRaw).split(",");latRaw=parts[0];if(!lngRaw||String(lngRaw).trim()==="")lngRaw=parts[1]}const lat=parseCoord(latRaw),lng=parseCoord(lngRaw);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null}
 function parseCSV(text) {
   const rows = [];
   let row = [], cell = "", inQuotes = false;
@@ -163,8 +135,57 @@ function parseCSV(text) {
 }
 
 function rowsToObjects(rows) {
-  if (!rows.length) return [];
+  if (!rows || !rows.length) return [];
   let headerIndex = 0;
+
+  // Find the real header row even if Google/Sheet adds a blank or note row.
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const joined = rows[i].map(x => norm(x)).join("|");
+    if ((joined.includes("subdivision") || joined.includes("community") || joined.includes("project")) &&
+        (joined.includes("latitude") || joined.includes("lat")) &&
+        (joined.includes("longitude") || joined.includes("lng") || joined.includes("long"))) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  const headers = rows[headerIndex].map((h, idx) => String(h || `Column ${idx+1}`).trim());
+  return rows.slice(headerIndex + 1).map(r => {
+    const obj = {};
+    headers.forEach((h, idx) => obj[h || `Column ${idx+1}`] = r[idx] ?? "");
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => String(v).trim() !== ""));
+}
+
+function looksUsable(tabName, data) {
+  if (!Array.isArray(data) || !data.length) return false;
+  if (data.length === 1 && Object.keys(data[0]).some(k => norm(k).includes("error"))) return false;
+
+  if (tabName === TAB_ACTIVE) {
+    return data.some(r => activeFromRow(r));
+  }
+  return data.some(r => futureFromRow(r, tabName === TAB_FUTURE ? "Future" : "Potential"));
+}
+
+
+function looksLikeLat(v) {
+  const n = Number(String(v ?? "").trim().replace(/,$/,""));
+  return Number.isFinite(n) && n > 35 && n < 45;
+}
+function looksLikeLng(v) {
+  const n = Number(String(v ?? "").trim().replace(/,$/,""));
+  return Number.isFinite(n) && n < -100 && n > -120;
+}
+function defaultHeadersFor(tabName) {
+  if (tabName === TAB_ACTIVE) {
+    return ["Subdivision","Latitude","Longitude","Superintendent","Homes","Townhomes","Upcoming Digs","Column 8","Column 9","Column 10","Column 11","Column 12","Column 13","Column 14","Column 15"];
+  }
+  return ["Community","Latitude","Longitude","Status","Lots","Address","Column 7","Column 8","Column 9","Column 10"];
+}
+function rowsToObjectsForTab(rows, tabName) {
+  if (!rows || !rows.length) return [];
+
+  let headerIndex = -1;
   for (let i = 0; i < Math.min(rows.length, 15); i++) {
     const joined = rows[i].map(x => norm(x)).join("|");
     if ((joined.includes("subdivision") || joined.includes("community") || joined.includes("project")) &&
@@ -174,135 +195,318 @@ function rowsToObjects(rows) {
       break;
     }
   }
-  const headers = rows[headerIndex].map((h, idx) => String(h || `Column ${idx + 1}`).trim());
-  return rows.slice(headerIndex + 1).map(r => {
+
+  let headers;
+  let dataStart;
+
+  if (headerIndex >= 0) {
+    headers = rows[headerIndex].map((h, idx) => String(h || `Column ${idx+1}`).trim());
+    dataStart = headerIndex + 1;
+  } else {
+    // The diagnostic showed Google is returning the CSV with no header row.
+    // In that case the first row is already real data, so apply the known workbook column order.
+    headers = defaultHeadersFor(tabName);
+    dataStart = 0;
+  }
+
+  return rows.slice(dataStart).map(r => {
     const obj = {};
-    headers.forEach((h, idx) => obj[h || `Column ${idx + 1}`] = r[idx] ?? "");
+    const maxLen = Math.max(headers.length, r.length);
+    for (let idx = 0; idx < maxLen; idx++) {
+      const h = headers[idx] || `Column ${idx+1}`;
+      obj[h] = r[idx] ?? "";
+    }
+
+    // Extra safety: if coordinates came in as columns 2 and 3, normalize them.
+    if (!obj["Latitude"] && looksLikeLat(r[1])) obj["Latitude"] = r[1];
+    if (!obj["Longitude"] && looksLikeLng(r[2])) obj["Longitude"] = r[2];
+
     return obj;
   }).filter(obj => Object.values(obj).some(v => String(v).trim() !== ""));
 }
 
-function getValue(row, names) {
-  const keys = Object.keys(row || {});
-  for (const name of names) {
-    const found = keys.find(k => norm(k) === norm(name));
-    if (found !== undefined) return row[found];
-  }
-  return "";
+async function tryOpenSheet(tabName) {
+  const url = OPEN_SHEET_BASE + encodeURIComponent(tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("OpenSheet HTTP " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("OpenSheet did not return rows");
+  if (!looksUsable(tabName, data)) throw new Error("OpenSheet returned rows but they did not match the dashboard headers");
+  return data;
 }
 
-function parseCoord(v) {
-  const n = Number(String(v ?? "").trim().replace(/,$/, ""));
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function parseActive(row) {
-  let latRaw = getValue(row, ["Latitude","Lat"]);
-  let lngRaw = getValue(row, ["Longitude","Long","Lng"]);
-  if (String(latRaw).includes(",")) {
-    const parts = String(latRaw).split(",");
-    latRaw = parts[0];
-    if (!lngRaw || String(lngRaw).trim() === "") lngRaw = parts[1];
-  }
-  const lat = parseCoord(latRaw);
-  const lng = parseCoord(lngRaw);
-  const subdivision = String(getValue(row, ["Subdivision","Community","Name"])).trim();
-  const superName = String(getValue(row, ["Superintendent","Super"])).trim();
-  const ok = subdivision && Number.isFinite(lat) && Number.isFinite(lng);
-  return { ok, subdivision, superName, latRaw, lngRaw, lat, lng, keys: Object.keys(row) };
-}
-
-async function fetchText(label, url) {
-  log("Trying " + label + ":", url);
-  const res = await fetch(url, { cache: "no-store" });
-  log(label + " HTTP status: " + res.status);
+async function tryGvizCSV(tabName) {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("GViz HTTP " + res.status);
   const text = await res.text();
-  log(label + " first 500 characters:", text.slice(0, 500));
-  return text;
+  const data = rowsToObjectsForTab(parseCSV(text), tabName);
+  if (!looksUsable(tabName, data)) throw new Error("GViz returned rows but they did not match the dashboard headers");
+  return data;
 }
 
-async function testTab(tab) {
-  const tests = [
-    {
-      name: "GViz CSV",
-      url: "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tab)
-    },
-    {
-      name: "Published CSV",
-      url: PUBLISHED_CSV_URLS[tab]
-    },
-    {
-      name: "OpenSheet JSON",
-      url: "https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(tab),
-      json: true
+async function tryPublishedCSV(tabName) {
+  const url = PUBLISHED_CSV_URLS[tabName];
+  if (!url) throw new Error("No published CSV URL for " + tabName);
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("Published CSV HTTP " + res.status);
+  const text = await res.text();
+  const data = rowsToObjectsForTab(parseCSV(text), tabName);
+  if (!looksUsable(tabName, data)) throw new Error("Published CSV returned rows but they did not match the dashboard headers");
+  return data;
+}
+
+async function fetchTab(tabName) {
+  const errors = [];
+  for (const loader of [tryOpenSheet, tryGvizCSV, tryPublishedCSV]) {
+    try {
+      const data = await loader(tabName);
+      console.log(tabName + " loaded with " + loader.name, data.length, data[0]);
+      return data;
+    } catch (e) {
+      errors.push(loader.name + ": " + e.message);
+      console.warn(tabName, loader.name, e);
     }
+  }
+  throw new Error(tabName + " could not load. " + errors.join(" | "));
+}
+function normalizeSuper(s){const clean=String(s||"Unassigned").trim();const found=Object.keys(superColors).find(x=>x.toLowerCase()===clean.toLowerCase());return found||clean}
+function activeFromRow(row){const ll=parseLatLng(row);if(!ll)return null;const subdivision=String(val(row,["Subdivision","Community","Name"])).trim();if(!subdivision)return null;const homes=num(val(row,["Homes","Home Count","Current Homes"])),townhomes=num(val(row,["Townhomes","Townhomes?","Townhome","TH"])),upcoming=num(val(row,["Upcoming Digs","Upcoming","Digs"])),current=homes+townhomes*.5;return{subdivision,address:String(val(row,["Address","Location"])).trim(),super:normalizeSuper(String(val(row,["Superintendent","Super"])).trim()||"Unassigned"),homes,townhomes,upcoming,current_weighted:current,total_weighted:current+upcoming,raw:row,...ll}}
+function futureFromRow(row,type){const ll=parseLatLng(row);if(!ll)return null;const community=String(val(row,["Community","Subdivision","Project","Name"])).trim();if(!community)return null;return{community,address:String(val(row,["Address","Location","City"])).trim(),status:String(val(row,["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(),lots:num(val(row,["Lots","How Many Lots","Homes","Total Lots","Units"])),type,...ll}}
+function workloadStatus(total){if(total<=THRESHOLDS.lightMax)return"light";if(total<=THRESHOLDS.balancedMax)return"balanced";return"heavy"}
+function statusLabel(total){const s=workloadStatus(total);return s==="light"?"Light":s==="balanced"?"Balanced":"Heavy"}
+function tooltip(item,type){const name=item.subdivision||item.community||"Community";return `${type}: ${name}${item.super?" • "+item.super:""}${item.total_weighted!==undefined?" • "+item.total_weighted.toFixed(1)+" WU":""}${item.lots?" • "+item.lots+" lots":""}${item.status?" • "+item.status:""}`}
+function hover(layer,item,type){layer.bindTooltip(tooltip(item,type),{direction:"top",offset:[0,-8],opacity:.95,sticky:true,className:"arive-hover-tooltip"});return layer}
+function initMap(){map=L.map("map").setView([40.245,-111.79],10);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);baseGroups.active=L.featureGroup().addTo(map);baseGroups.future=L.featureGroup().addTo(map);baseGroups.potential=L.featureGroup().addTo(map);baseGroups.labels=L.layerGroup();L.control.layers(null,{"Active Communities":baseGroups.active,"Future Communities":baseGroups.future,"Potential Projects":baseGroups.potential,"Zoom Labels":baseGroups.labels}).addTo(map);map.on("zoomend",updateLabels)}
+function clearMap(){Object.values(baseGroups).forEach(g=>g.clearLayers())}
+function addActive(loc){const color=superColors[loc.super]||superColors.Unassigned,radius=Math.max(6,Math.min(28,5+loc.total_weighted*.85));const popup=`<b>${loc.subdivision}</b><br>${loc.address||""}<br><br><b>Super:</b> ${loc.super}<br><b>Homes:</b> ${loc.homes}<br><b>Townhomes:</b> ${loc.townhomes}<br><b>Upcoming digs:</b> ${loc.upcoming}<br><b>Current weighted:</b> ${loc.current_weighted.toFixed(1)}<br><b>Total weighted:</b> ${loc.total_weighted.toFixed(1)}<br><b>Status:</b> ${statusLabel(loc.total_weighted)}`;hover(L.circleMarker([loc.lat,loc.lng],{radius,color,fillColor:color,fillOpacity:.62,weight:2}).bindPopup(popup),loc,"Active").addTo(baseGroups.active);L.marker([loc.lat,loc.lng],{icon:L.divIcon({className:"",html:`<div class="map-label" style="border-color:${color};"><div class="sub">${loc.subdivision}</div><div class="super" style="color:${color};">${loc.super}</div></div>`,iconSize:[64,21],iconAnchor:[32,37]})}).addTo(baseGroups.labels)}
+function addFuture(item,type){const popup=`<b>${item.community}</b><br>${item.address||""}<br><br><b>Type:</b> ${type}<br><b>Status:</b> ${item.status||""}<br><b>Lots:</b> ${item.lots||""}`;const symbol=type==="Future"?"⭐":"◆";const style=type==="Future"?"font-size:24px;text-shadow:0 1px 3px #333;":"font-size:24px;color:#666;text-shadow:0 1px 3px #fff;";const icon=L.divIcon({className:"",html:`<div style="${style}">${symbol}</div>`,iconSize:[26,26],iconAnchor:[13,13]});hover(L.marker([item.lat,item.lng],{icon}).bindPopup(popup),item,type).addTo(type==="Future"?baseGroups.future:baseGroups.potential)}
+function updateLabels(){const show=document.getElementById("toggleLabels").checked||map.getZoom()>=12;if(show){if(!map.hasLayer(baseGroups.labels))map.addLayer(baseGroups.labels)}else{if(map.hasLayer(baseGroups.labels))map.removeLayer(baseGroups.labels)}}
+function applyLayerToggles(){[["toggleActive",baseGroups.active],["toggleFuture",baseGroups.future],["togglePotential",baseGroups.potential]].forEach(([id,g])=>{const checked=document.getElementById(id).checked;if(checked&&!map.hasLayer(g))map.addLayer(g);if(!checked&&map.hasLayer(g))map.removeLayer(g)});updateLabels()}
+function haversine(a,b){const R=3958.8,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,lat1=a.lat*Math.PI/180,lat2=b.lat*Math.PI/180,h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function statsFor(active){const stats={};active.forEach(loc=>{const s=loc.super||"Unassigned";if(!stats[s])stats[s]={communities:0,homes:0,townhomes:0,upcoming:0,current:0,total:0};stats[s].communities++;stats[s].homes+=loc.homes;stats[s].townhomes+=loc.townhomes;stats[s].upcoming+=loc.upcoming;stats[s].current+=loc.current_weighted;stats[s].total+=loc.total_weighted});return stats}
+
+function spreadForSuper(superName) {
+  const pts = activeData.filter(a => a.super === superName);
+  if (pts.length <= 1) {
+    return {maxMiles: 0, avgFromCenter: 0, communities: pts.length, read: "Single location"};
+  }
+
+  let maxMiles = 0;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      maxMiles = Math.max(maxMiles, haversine(pts[i], pts[j]));
+    }
+  }
+
+  const center = {
+    lat: pts.reduce((sum, p) => sum + p.lat, 0) / pts.length,
+    lng: pts.reduce((sum, p) => sum + p.lng, 0) / pts.length
+  };
+
+  const avgFromCenter = pts.reduce((sum, p) => sum + haversine(p, center), 0) / pts.length;
+
+  let read = "Tight";
+  if (maxMiles >= 25) read = "Very spread out";
+  else if (maxMiles >= 15) read = "Spread out";
+  else if (maxMiles >= 8) read = "Moderate";
+  else read = "Tight";
+
+  return {maxMiles, avgFromCenter, communities: pts.length, read};
+}
+
+function spreadLabel(superName) {
+  const s = spreadForSuper(superName);
+  return s.maxMiles.toFixed(1) + " mi";
+}
+
+function renderSpreadRows(stats) {
+  const rows = Object.keys(stats)
+    .sort((a,b) => spreadForSuper(b).maxMiles - spreadForSuper(a).maxMiles)
+    .map(s => {
+      const sp = spreadForSuper(s);
+      const color = superColors[s] || superColors.Unassigned;
+      return `<tr>
+        <td><span class="dot" style="background:${color}"></span>${s}</td>
+        <td>${sp.communities}</td>
+        <td>${sp.maxMiles.toFixed(1)} mi</td>
+        <td>${sp.avgFromCenter.toFixed(1)} mi</td>
+        <td>${sp.read}</td>
+      </tr>`;
+    }).join("");
+
+  const el = document.getElementById("spreadRows");
+  if (el) el.innerHTML = rows;
+}
+
+
+function alertClass(type) {
+  if (type === "danger") return "danger";
+  if (type === "good") return "good";
+  return "warning";
+}
+
+function renderAlerts(stats) {
+  const alerts = [];
+  const entries = Object.entries(stats);
+  if (!entries.length) {
+    document.getElementById("alertList").innerHTML = '<div class="alert-item">No active data loaded yet.</div>';
+    return;
+  }
+
+  const heaviest = entries.slice().sort((a,b) => b[1].total - a[1].total)[0];
+  const lightest = entries.slice().sort((a,b) => a[1].total - b[1].total)[0];
+  const mostUpcoming = entries.slice().sort((a,b) => b[1].upcoming - a[1].upcoming)[0];
+
+  entries.forEach(([name, s]) => {
+    if (s.total > THRESHOLDS.balancedMax) {
+      alerts.push({type:"danger", text:`⚠️ ${name} is Heavy at ${s.total.toFixed(1)} WU.`});
+    }
+  });
+
+  if (mostUpcoming && mostUpcoming[1].upcoming > 0) {
+    alerts.push({type:"warning", text:`📅 ${mostUpcoming[0]} has the most upcoming digs at ${mostUpcoming[1].upcoming.toFixed(0)}.`});
+  }
+
+  if (lightest) {
+    alerts.push({type:"good", text:`✅ ${lightest[0]} has the most available capacity at ${lightest[1].total.toFixed(1)} WU.`});
+  }
+
+  const spreads = entries.map(([name]) => [name, spreadForSuper(name)]);
+  const tightest = spreads.slice().sort((a,b) => a[1].maxMiles - b[1].maxMiles)[0];
+  const widest = spreads.slice().sort((a,b) => b[1].maxMiles - a[1].maxMiles)[0];
+
+  if (tightest) alerts.push({type:"good", text:`📍 ${tightest[0]} has the tightest territory spread at ${tightest[1].maxMiles.toFixed(1)} miles.`});
+  if (widest && widest[1].maxMiles >= 15) alerts.push({type:"warning", text:`🧭 ${widest[0]} is the most spread out at ${widest[1].maxMiles.toFixed(1)} miles.`});
+
+  if (heaviest && lightest && heaviest[1].total - lightest[1].total >= 10) {
+    alerts.push({type:"warning", text:`🔁 Load gap: ${heaviest[0]} is ${ (heaviest[1].total - lightest[1].total).toFixed(1)} WU heavier than ${lightest[0]}.`});
+  }
+
+  document.getElementById("alertList").innerHTML = alerts.slice(0, 6).map(a =>
+    `<div class="alert-item ${alertClass(a.type)}">${a.text}</div>`
+  ).join("");
+}
+
+function populateSimulator() {
+  const communitySelect = document.getElementById("simCommunity");
+  const superSelect = document.getElementById("simTo");
+  if (!communitySelect || !superSelect) return;
+
+  communitySelect.innerHTML = activeData
+    .slice()
+    .sort((a,b) => a.subdivision.localeCompare(b.subdivision))
+    .map((c,i) => `<option value="${activeData.indexOf(c)}">${c.subdivision} — ${c.super}</option>`)
+    .join("");
+
+  const supers = Array.from(new Set(activeData.map(x => x.super))).sort();
+  superSelect.innerHTML = supers.map(s => `<option value="${s}">${s}</option>`).join("");
+
+  communitySelect.onchange = renderSimulator;
+  superSelect.onchange = renderSimulator;
+  renderSimulator();
+}
+
+function renderSimulator() {
+  const communitySelect = document.getElementById("simCommunity");
+  const superSelect = document.getElementById("simTo");
+  const result = document.getElementById("simResult");
+  if (!communitySelect || !superSelect || !result || !activeData.length) return;
+
+  const community = activeData[Number(communitySelect.value)] || activeData[0];
+  const toSuper = superSelect.value;
+  const fromSuper = community.super;
+
+  if (!community || !toSuper) {
+    result.innerHTML = "Select a community and superintendent to preview impact.";
+    return;
+  }
+
+  const stats = statsFor(activeData);
+  const impact = community.total_weighted;
+
+  if (fromSuper === toSuper) {
+    result.innerHTML = `<b>${community.subdivision}</b> is already assigned to <b>${fromSuper}</b>. Pick a different superintendent to preview a move.`;
+    return;
+  }
+
+  const fromBefore = stats[fromSuper]?.total || 0;
+  const toBefore = stats[toSuper]?.total || 0;
+  const fromAfter = fromBefore - impact;
+  const toAfter = toBefore + impact;
+
+  const fromStatus = statusLabel(fromAfter);
+  const toStatus = statusLabel(toAfter);
+
+  result.innerHTML = `
+    <div style="font-weight:900;margin-bottom:6px;">Move ${community.subdivision}</div>
+    <div class="small" style="margin-bottom:8px;">Previewing ${impact.toFixed(1)} WU moved from ${fromSuper} to ${toSuper}.</div>
+    <div class="impact-row"><span>${fromSuper}</span><b>${fromBefore.toFixed(1)} → ${fromAfter.toFixed(1)} WU (${fromStatus})</b></div>
+    <div class="impact-row"><span>${toSuper}</span><b>${toBefore.toFixed(1)} → ${toAfter.toFixed(1)} WU (${toStatus})</b></div>
+    <div class="impact-row"><span>Community impact</span><b>${community.homes} homes, ${community.townhomes} TH, ${community.upcoming} digs</b></div>
+  `;
+}
+
+function discoverForecastMonths() {
+  const preferred = [
+    {label:"Current", names:["Current WU","Current Weighted","Current"]},
+    {label:"End Jun", names:["End June","End Jun","June","June End"]},
+    {label:"End Jul", names:["End July","End Jul","July","July End"]},
+    {label:"End Aug", names:["End August","End Aug","August","August End"]},
+    {label:"End Sep", names:["End September","End Sep","September","September End"]},
+    {label:"End Oct", names:["End October","End Oct","October","October End"]}
   ];
 
-  for (const t of tests) {
-    try {
-      log("--------------------------------------------------");
-      log("TAB: " + tab + " | METHOD: " + t.name);
-      const res = await fetch(t.url, { cache: "no-store" });
-      log(t.name + " HTTP status: " + res.status);
-      if (t.json) {
-        const data = await res.json();
-        log(t.name + " JSON rows: " + (Array.isArray(data) ? data.length : "not array"));
-        log(t.name + " first row:", Array.isArray(data) ? data[0] : data);
-        return Array.isArray(data) ? data : [];
-      } else {
-        const text = await res.text();
-        log(t.name + " first 500 characters:", text.slice(0, 500));
-        const rows = parseCSV(text);
-        const objects = rowsToObjects(rows);
-        log(t.name + " raw row count: " + rows.length);
-        log(t.name + " parsed object count: " + objects.length);
-        log(t.name + " headers:", objects[0] ? Object.keys(objects[0]) : []);
-        log(t.name + " first parsed object:", objects[0] || {});
-        if (objects.length) return objects;
-      }
-    } catch (e) {
-      log(t.name + " failed:", e.message);
-    }
-  }
-  return [];
+  const found = preferred.filter(m => activeData.some(r => val(r.raw || {}, m.names) !== ""));
+  if (found.length >= 2) return found;
+
+  // Fallback: current and after upcoming digs, so the feature still works even without month columns.
+  return [
+    {label:"Current", fallback:"current"},
+    {label:"With Digs", fallback:"total"}
+  ];
 }
 
-async function run() {
-  try {
-    document.getElementById("summary").className = "card warn";
-    document.getElementById("summary").innerHTML = "<b>Running...</b> Testing every sheet connection method.";
-
-    const activeRows = await testTab("Active Communities");
-    const parsed = activeRows.map(parseActive);
-    const usable = parsed.filter(x => x.ok);
-
-    log("ACTIVE PARSE RESULTS:");
-    log("Total active rows pulled: " + activeRows.length);
-    log("Usable active rows: " + usable.length);
-    log("First 10 parse results:", parsed.slice(0, 10));
-
-    if (usable.length) {
-      document.getElementById("summary").className = "card ok";
-      document.getElementById("summary").innerHTML = "<b>Good news:</b> The diagnostic page found " + usable.length + " active communities. The main dashboard parser just needs to be rebuilt from this result.";
-      document.getElementById("preview").innerHTML = "<table><thead><tr><th>Subdivision</th><th>Super</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>" +
-        usable.map(r => `<tr><td>${r.subdivision}</td><td>${r.superName}</td><td>${r.lat}</td><td>${r.lng}</td></tr>`).join("") +
-        "</tbody></table>";
-    } else {
-      document.getElementById("summary").className = "card danger";
-      document.getElementById("summary").innerHTML = "<b>Still failing:</b> The page can load, but no active rows passed the parser. Send Brendan/ChatGPT a screenshot of the diagnostic log below.";
-      document.getElementById("preview").innerHTML = "No usable active communities found.";
-    }
-
-    await testTab("Future Communities");
-    await testTab("Potential Projects");
-  } catch (e) {
-    document.getElementById("summary").className = "card danger";
-    document.getElementById("summary").innerHTML = "<b>Diagnostic crashed:</b> " + e.message;
-    log("Diagnostic crashed:", e.stack || e.message);
-  }
+function forecastValue(loc, month) {
+  if (month.fallback === "current") return loc.current_weighted;
+  if (month.fallback === "total") return loc.total_weighted;
+  const v = val(loc.raw || {}, month.names);
+  return v === "" ? loc.total_weighted : num(v);
 }
 
-run();
+function renderForecast(stats) {
+  const months = discoverForecastMonths();
+  document.getElementById("forecastHead").innerHTML =
+    `<tr><th>Super</th>${months.map(m => `<th>${m.label}</th>`).join("")}</tr>`;
+
+  const supers = Object.keys(stats).sort();
+  const rows = supers.map(s => {
+    const locs = activeData.filter(a => a.super === s);
+    const cells = months.map(m => {
+      const total = locs.reduce((sum, loc) => sum + forecastValue(loc, m), 0);
+      const st = workloadStatus(total);
+      return `<td><span class="heat ${st}">${total.toFixed(1)}</span></td>`;
+    }).join("");
+    const color = superColors[s] || superColors.Unassigned;
+    return `<tr><td><span class="dot" style="background:${color}"></span>${s}</td>${cells}</tr>`;
+  }).join("");
+
+  document.getElementById("forecastRows").innerHTML = rows;
+}
+
+
+function renderAll(){clearMap();const active=currentFilter==="All"?activeData:activeData.filter(x=>x.super===currentFilter);active.forEach(addActive);futureData.forEach(i=>addFuture(i,"Future"));potentialData.forEach(i=>addFuture(i,"Potential"));applyLayerToggles();renderTables(active,futureData,potentialData);fitVisibleMap()}
+function renderTables(active,future,potential){const allStats=statsFor(activeData),stats=statsFor(active),total=Object.values(stats).reduce((s,v)=>s+v.total,0),current=Object.values(stats).reduce((s,v)=>s+v.current,0),digs=Object.values(stats).reduce((s,v)=>s+v.upcoming,0);document.getElementById("currentWU").textContent=current.toFixed(1);document.getElementById("upcomingDigs").textContent=digs.toFixed(0);document.getElementById("totalWU").textContent=total.toFixed(1);renderAlerts(allStats);renderForecast(allStats);renderSuperCards(allStats);renderSpreadRows(allStats);renderCommunityRows(active);renderOpportunityRows(future,potential,allStats);renderSimulator()}
+function renderSuperCards(stats){document.getElementById("superCards").innerHTML=Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v])=>{const color=superColors[s]||superColors.Unassigned,st=workloadStatus(v.total),activeClass=currentFilter===s?" active-filter":"";return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Spread<br><b>${spreadLabel(s)}</b></div></div></div>`}).join("")}
+function renderCommunityRows(active){document.getElementById("communityRows").innerHTML=active.slice().sort((a,b)=>(a.super+a.subdivision).localeCompare(b.super+b.subdivision)).map(loc=>`<tr><td><span class="dot" style="background:${superColors[loc.super]||superColors.Unassigned}"></span>${loc.subdivision}</td><td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td></tr>`).join("")}
+function renderOpportunityRows(future,potential,stats){const centroids={};Object.keys(stats).forEach(s=>{const pts=activeData.filter(a=>a.super===s);if(pts.length)centroids[s]={lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,lng:pts.reduce((sum,p)=>sum+p.lng,0)/pts.length,total:stats[s].total}});const capacityFit=Object.entries(stats).sort((a,b)=>a[1].total-b[1].total)[0]?.[0]||"";document.getElementById("opportunityRows").innerHTML=future.concat(potential).map(o=>{let closest="",min=Infinity;Object.entries(centroids).forEach(([s,c])=>{const d=haversine(o,c);if(d<min){min=d;closest=s}});let rec=closest&&capacityFit&&closest===capacityFit?closest:(closest&&capacityFit?closest+" / "+capacityFit:(closest||capacityFit||""));return `<tr><td>${o.community}</td><td>${o.lots||""}</td><td>${o.status||o.type||""}</td><td>${closest}</td><td>${capacityFit}</td><td><span class="recommendation">${rec}</span></td></tr>`}).join("")}
+function fitVisibleMap(){const groups=[baseGroups.active,baseGroups.future,baseGroups.potential].filter(g=>map.hasLayer(g)&&g.getLayers().length);if(groups.length){const bounds=L.featureGroup(groups).getBounds();if(bounds.isValid())map.fitBounds(bounds.pad(.18))}}
+function populateFilters(){const select=document.getElementById("superFilter"),supers=Array.from(new Set(activeData.map(x=>x.super))).sort();select.innerHTML='<option value="All">All Superintendents</option>'+supers.map(s=>`<option value="${s}">${s}</option>`).join("")}
+function selectSuper(s){currentFilter=currentFilter===s?"All":s;document.getElementById("superFilter").value=currentFilter;renderAll()}
+function wireEvents(){document.getElementById("superFilter").addEventListener("change",e=>{currentFilter=e.target.value;renderAll()});["toggleActive","toggleFuture","togglePotential","toggleLabels"].forEach(id=>{document.getElementById(id).addEventListener("change",()=>{applyLayerToggles();if(id!=="toggleLabels")fitVisibleMap()})})}
+async function init(){try{initMap();wireEvents();const [activeRows,futureRows,potentialRows]=await Promise.all([fetchTab(TAB_ACTIVE),fetchTab(TAB_FUTURE),fetchTab(TAB_POTENTIAL)]);activeData=activeRows.map(activeFromRow).filter(x=>x);futureData=futureRows.map(r=>futureFromRow(r,"Future")).filter(x=>x);potentialData=potentialRows.map(r=>futureFromRow(r,"Potential")).filter(x=>x);if(!activeData.length)throw new Error("No active communities found. The loader now supports headerless CSV, so check whether the Active Communities tab still has Subdivision, Latitude, Longitude, Superintendent in the expected columns.");populateFilters();populateSimulator();renderAll();const now=new Date();document.getElementById("lastUpdated").textContent="Loaded "+now.toLocaleString();setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`,"ok")}catch(err){console.error(err);setStatus(`<b>Dashboard error:</b><br>${err.message}<br><br>Tip: make sure the Google Sheet is shared as Anyone with the link can view.`,"error");document.getElementById("lastUpdated").textContent="Load failed"}}
+window.addEventListener("error",event=>{setStatus(`<b>JavaScript error:</b><br>${event.message}`,"error")});
+init();
 </script>
 </body>
 </html>
