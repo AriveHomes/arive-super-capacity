@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Arive Operations Dashboard V6</title>
+  <title>Arive Operations Dashboard V7</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -86,7 +86,7 @@
       <div class="section-title">What If Simulator <span class="small">Preview only — does not change the Google Sheet</span></div>
       <div class="sim-grid"><div class="filter-box"><label for="simCommunity">Move Community</label><select id="simCommunity"></select></div><div class="filter-box"><label for="simTo">Move To</label><select id="simTo"></select></div></div>
       <div class="sim-result" id="simResult">Select a community and superintendent to preview impact.</div>
-      <div class="section-title">Month-by-Month Forecast <span class="small">Uses sheet month columns when available</span></div>
+      <div class="section-title">Superintendent Workload Forecast <span class="small">Live from Workload Forecast tab</span></div>
       <div class="table-wrap"><table class="forecast-table"><thead id="forecastHead"></thead><tbody id="forecastRows"></tbody></table></div>
       <div class="filters"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
       <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
@@ -104,10 +104,11 @@ const SHEET_ID = "1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
 const TAB_ACTIVE = "Active Communities";
 const TAB_FUTURE = "Future Communities";
 const TAB_POTENTIAL = "Potential Projects";
+const TAB_WORKLOAD = "Workload Forecast";
 const THRESHOLDS = { lightMax:14, balancedMax:22 };
 const superColors = {"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
 
-let map, baseGroups = {}, activeData = [], futureData = [], potentialData = [], currentFilter = "All";
+let map, baseGroups = {}, activeData = [], futureData = [], potentialData = [], workloadForecastData = [], currentFilter = "All";
 
 function setStatus(message, type) {
   const el = document.getElementById("status");
@@ -184,6 +185,47 @@ async function fetchTab(tabName) {
   if (!objects.length) throw new Error(tabName + " loaded but had no usable rows.");
   return objects;
 }
+
+async function fetchWorkloadForecast() {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(TAB_WORKLOAD);
+  const res = await fetch(url, { cache:"no-store" });
+  if (!res.ok) {
+    console.warn("Workload Forecast tab failed. HTTP", res.status);
+    return [];
+  }
+
+  const text = await res.text();
+  const rows = parseCSV(text).filter(r => r.some(c => String(c).trim() !== ""));
+  if (!rows.length) return [];
+
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const normalized = rows[i].map(x => norm(x));
+    if (normalized.includes("month") && normalized.includes("burke") && normalized.includes("greg")) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  let headers;
+  let dataStart;
+  if (headerIndex >= 0) {
+    headers = rows[headerIndex].map((h, i) => String(h || `Column ${i+1}`).trim());
+    dataStart = headerIndex + 1;
+  } else {
+    headers = ["Month", "Burke", "Greg", "Manuel", "Deryck"];
+    dataStart = 0;
+  }
+
+  return rows.slice(dataStart)
+    .map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = r[i] ?? "");
+      return obj;
+    })
+    .filter(r => String(r["Month"] || r["SUPER"] || r["Super"] || Object.values(r)[0] || "").trim() !== "");
+}
+
 
 function val(row, names) {
   const keys = Object.keys(row || {});
@@ -351,7 +393,26 @@ function renderAlerts(stats) {
   if (tightest) alerts.push({type:"good", text:`📍 ${tightest[0]} has the tightest territory spread at ${tightest[1].maxMiles.toFixed(1)} miles.`});
   if (widest && widest[1].maxMiles >= 15) alerts.push({type:"warning", text:`🧭 ${widest[0]} is the most spread out at ${widest[1].maxMiles.toFixed(1)} miles.`});
   if (heaviest && lightest && heaviest[1].total - lightest[1].total >= 10) alerts.push({type:"warning", text:`🔁 Load gap: ${heaviest[0]} is ${(heaviest[1].total-lightest[1].total).toFixed(1)} WU heavier than ${lightest[0]}.`});
-  document.getElementById("alertList").innerHTML = alerts.slice(0,6).map(a => `<div class="alert-item ${a.type}">${a.text}</div>`).join("");
+  if (workloadForecastData && workloadForecastData.length) {
+    const supers = ["Burke", "Greg", "Manuel", "Deryck"];
+    const first = workloadForecastData[0];
+    const last = workloadForecastData[workloadForecastData.length - 1];
+    const lastVals = supers.map(s => [s, forecastSuperValue(last, s)]);
+    const finalHigh = lastVals.slice().sort((a,b) => b[1] - a[1])[0];
+    const finalLow = lastVals.slice().sort((a,b) => a[1] - b[1])[0];
+
+    if (finalHigh) alerts.push({type:"warning", text:`📈 By ${rowLabel(last)}, ${finalHigh[0]} is projected highest at ${finalHigh[1].toFixed(0)}.`});
+    if (finalLow) alerts.push({type:"good", text:`📉 By ${rowLabel(last)}, ${finalLow[0]} is projected lightest at ${finalLow[1].toFixed(0)}.`});
+
+    const biggestDrop = supers
+      .map(s => [s, forecastSuperValue(first, s) - forecastSuperValue(last, s)])
+      .sort((a,b) => b[1] - a[1])[0];
+    if (biggestDrop && biggestDrop[1] > 0) {
+      alerts.push({type:"good", text:`⬇️ ${biggestDrop[0]} improves the most across the forecast, down ${biggestDrop[1].toFixed(0)}.`});
+    }
+  }
+
+  document.getElementById("alertList").innerHTML = alerts.slice(0,8).map(a => `<div class="alert-item ${a.type}">${a.text}</div>`).join("");
 }
 
 function renderSuperCards(stats) {
@@ -387,32 +448,47 @@ function renderOpportunityRows(future,potential,stats) {
   }).join("");
 }
 
-function discoverForecastMonths() {
-  const preferred = [
-    {label:"Current", names:["Current WU","Current Weighted","Current"]},
-    {label:"End Jun", names:["End June","End Jun","June","June End"]},
-    {label:"End Jul", names:["End July","End Jul","July","July End"]},
-    {label:"End Aug", names:["End August","End Aug","August","August End"]},
-    {label:"End Sep", names:["End September","End Sep","September","September End"]},
-    {label:"End Oct", names:["End October","End Oct","October","October End"]}
-  ];
-  const found = preferred.filter(m => activeData.some(r => val(r.raw || {}, m.names) !== ""));
-  return found.length >= 2 ? found : [{label:"Current", fallback:"current"}, {label:"With Digs", fallback:"total"}];
+
+function rowLabel(row) {
+  return String(row["Month"] || row["SUPER"] || row["Super"] || row[""] || Object.values(row)[0] || "").trim();
 }
 
-function forecastValue(loc, month) {
-  if (month.fallback === "current") return loc.current_weighted;
-  if (month.fallback === "total") return loc.total_weighted;
-  const v = val(loc.raw || {}, month.names);
-  return v === "" ? loc.total_weighted : num(v);
+function forecastSuperValue(row, superName) {
+  const keys = Object.keys(row || {});
+  const found = keys.find(k => norm(k) === norm(superName));
+  return found ? num(row[found]) : 0;
 }
 
 function renderForecast(stats) {
-  const months = discoverForecastMonths();
-  document.getElementById("forecastHead").innerHTML = `<tr><th>Super</th>${months.map(m => `<th>${m.label}</th>`).join("")}</tr>`;
+  const supers = ["Burke", "Greg", "Manuel", "Deryck"];
+
+  if (workloadForecastData && workloadForecastData.length) {
+    document.getElementById("forecastHead").innerHTML =
+      `<tr><th>Month</th>${supers.map(s => `<th>${s}</th>`).join("")}</tr>`;
+
+    document.getElementById("forecastRows").innerHTML = workloadForecastData.map(row => {
+      const label = rowLabel(row);
+      const cells = supers.map(s => {
+        const total = forecastSuperValue(row, s);
+        const st = workloadStatus(total);
+        return `<td><span class="heat ${st}">${total.toFixed(0)}</span></td>`;
+      }).join("");
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }).join("");
+    return;
+  }
+
+  const months = [{label:"Current", fallback:"current"}, {label:"With Digs", fallback:"total"}];
+  document.getElementById("forecastHead").innerHTML =
+    `<tr><th>Super</th>${months.map(m => `<th>${m.label}</th>`).join("")}</tr>`;
+
   document.getElementById("forecastRows").innerHTML = Object.keys(stats).sort().map(s => {
     const locs = activeData.filter(a => a.super === s), color = superColors[s] || superColors.Unassigned;
-    const cells = months.map(m => { const total = locs.reduce((sum,loc)=>sum+forecastValue(loc,m),0), st = workloadStatus(total); return `<td><span class="heat ${st}">${total.toFixed(1)}</span></td>`; }).join("");
+    const cells = months.map(m => {
+      const total = locs.reduce((sum, loc) => sum + (m.fallback === "current" ? loc.current_weighted : loc.total_weighted), 0);
+      const st = workloadStatus(total);
+      return `<td><span class="heat ${st}">${total.toFixed(1)}</span></td>`;
+    }).join("");
     return `<tr><td><span class="dot" style="background:${color}"></span>${s}</td>${cells}</tr>`;
   }).join("");
 }
@@ -459,6 +535,10 @@ async function init() {
   try {
     initMap(); wireEvents();
     const [activeRows, futureRows, potentialRows] = await Promise.all([fetchTab(TAB_ACTIVE), fetchTab(TAB_FUTURE), fetchTab(TAB_POTENTIAL)]);
+    workloadForecastData = await fetchWorkloadForecast().catch(err => {
+      console.warn("Workload Forecast could not load", err);
+      return [];
+    });
     activeData = activeRows.map(activeFromRow).filter(x => x);
     futureData = futureRows.map(r => futureFromRow(r,"Future")).filter(x => x);
     potentialData = potentialRows.map(r => futureFromRow(r,"Potential")).filter(x => x);
@@ -466,7 +546,7 @@ async function init() {
     populateFilters(); populateSimulator(); renderAll();
     const now = new Date();
     document.getElementById("lastUpdated").textContent = "Loaded " + now.toLocaleString();
-    setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential. Refresh after editing Google Sheets.`, "ok");
+    setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential, ${workloadForecastData.length} forecast rows. Refresh after editing Google Sheets.`, "ok");
   } catch (err) {
     console.error(err);
     setStatus(`<b>Dashboard error:</b><br>${err.message}`, "error");
