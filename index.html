@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Arive Operations Dashboard V11</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root { --bg:#f3f5f7; --panel:#fff; --text:#1f2933; --muted:#667085; --border:#e4e7ec; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text); }
+    .topbar { background:linear-gradient(135deg,#1f2328,#2f3845); color:#fff; padding:18px 24px; display:flex; justify-content:space-between; gap:18px; align-items:center; flex-wrap:wrap; }
+    .topbar h1 { margin:0 0 6px; font-size:24px; }
+    .subtitle { color:#d0d7de; font-size:13px; }
+    .top-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .button { background:#fff; color:#1f2933; text-decoration:none; font-weight:700; font-size:13px; padding:9px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.25); box-shadow:0 1px 2px rgba(0,0,0,.18); cursor:pointer; }
+    .button.dark { background:#111827; color:#fff; border:1px solid #374151; }
+    .status-pill { font-size:12px; padding:8px 10px; border-radius:999px; background:rgba(255,255,255,.12); color:#e5e7eb; border:1px solid rgba(255,255,255,.18); }
+    .layout { display:grid; grid-template-columns:minmax(650px,2fr) minmax(460px,1fr); gap:16px; padding:16px; }
+    .map-card,.side-card { background:var(--panel); border-radius:14px; box-shadow:0 1px 8px rgba(16,24,40,.14); overflow:hidden; }
+    #map { height:780px; width:100%; background:#e9eef2; }
+    .side-card { padding:16px; max-height:780px; overflow:auto; }
+    .section-title { font-size:17px; font-weight:800; margin:0 0 12px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .small { color:var(--muted); font-size:12px; line-height:1.35; }
+    .notice { border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; border:1px solid #fed7aa; background:#fff7ed; color:#7c2d12; }
+    .notice.ok { border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
+    .notice.error { border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
+    .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+    .summary-card { background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .summary-card .label { color:var(--muted); font-size:12px; margin-bottom:5px; }
+    .summary-card .value { font-size:24px; font-weight:900; }
+    .filters,.sim-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0 14px; }
+    .filter-box { background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:10px; }
+    .filter-box label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-weight:700; }
+    select,input[type="checkbox"] { accent-color:#2563eb; }
+    select { width:100%; border:1px solid var(--border); border-radius:8px; padding:8px; background:#fff; font-size:13px; }
+    .toggle-row { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font-size:13px; margin-top:8px; }
+    .alert-list { display:grid; gap:8px; margin-bottom:16px; }
+    .alert-item { border-radius:10px; padding:10px 11px; font-size:13px; border:1px solid var(--border); background:#f8fafc; }
+    .alert-item.warning { background:#fff7ed; border-color:#fed7aa; color:#7c2d12; }
+    .alert-item.danger { background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
+    .alert-item.good { background:#f0fdf4; border-color:#bbf7d0; color:#14532d; }
+    .sim-result { border:1px solid var(--border); background:#f8fafc; border-radius:12px; padding:10px; margin-bottom:16px; font-size:13px; }
+    .community-picker { display:grid; gap:6px; max-height:220px; overflow:auto; background:#fff; border:1px solid var(--border); border-radius:10px; padding:8px; }
+    .community-check { display:flex; align-items:center; gap:7px; font-size:13px; padding:4px 2px; border-bottom:1px solid #f1f5f9; }
+    .community-check:last-child { border-bottom:none; }
+    .sim-actions { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 0; }
+    .mini-button { border:1px solid var(--border); background:#fff; border-radius:8px; padding:6px 8px; font-size:12px; font-weight:700; cursor:pointer; }
+    .impact-row { display:flex; justify-content:space-between; border-bottom:1px solid #e5e7eb; padding:6px 0; gap:8px; }
+    .impact-row:last-child { border-bottom:none; }
+    .super-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+    .super-card { border:1px solid var(--border); border-left:6px solid #9ca3af; border-radius:12px; padding:11px; background:#fff; cursor:pointer; transition:.15s ease; }
+    .super-card:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(16,24,40,.12); }
+    .super-card.active-filter { outline:2px solid #2563eb; background:#eff6ff; }
+    .super-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; }
+    .super-name { font-weight:900; font-size:15px; }
+    .badge,.heat { font-size:11px; font-weight:800; padding:4px 7px; border-radius:999px; background:#f3f4f6; color:#374151; white-space:nowrap; display:inline-block; }
+    .badge.light,.heat.light { background:#dcfce7; color:#166534; }
+    .badge.balanced,.heat.balanced { background:#fef3c7; color:#92400e; }
+    .badge.heavy,.heat.heavy { background:#fee2e2; color:#991b1b; }
+    .super-metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12px; color:#475467; }
+    .super-metrics b { color:#111827; font-size:14px; }
+    .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:12px; margin-bottom:16px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; }
+    th,td { padding:8px 7px; border-bottom:1px solid #eef2f6; text-align:right; white-space:nowrap; }
+    th:first-child,td:first-child { text-align:left; }
+    th { background:#f8fafc; font-weight:900; color:#344054; position:sticky; top:0; z-index:1; }
+    tr:hover td { background:#f9fafb; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+    .recommendation { display:inline-block; font-weight:800; border-radius:999px; padding:3px 7px; font-size:11px; background:#eff6ff; color:#1d4ed8; }
+    .map-label { background:#fff; border:1px solid #999; border-radius:4px; padding:1px 4px; box-shadow:0 1px 2px rgba(0,0,0,.22); text-align:center; white-space:nowrap; line-height:1.05; }
+    .map-label .sub { font-weight:800; font-size:9.5px; }
+    .map-label .super { font-weight:800; font-size:8.5px; margin-top:1px; }
+    .leaflet-tooltip.arive-hover-tooltip { background:rgba(255,255,255,.97); border:1px solid #667085; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.25); color:#111827; font-weight:800; padding:5px 7px; font-size:12px; }
+    
+    .presentation-mode .presentation-hide { display:none !important; }
+    .presentation-mode .topbar { padding:16px 24px; }
+    .presentation-mode .layout { grid-template-columns:minmax(620px,1.25fr) minmax(520px,.75fr); }
+    .presentation-mode .side-card { max-height:none; }
+    .presentation-mode #map { height:820px; }
+    .presentation-mode .section-title { margin-top:4px; }
+    .presentation-mode .summary-grid { margin-bottom:14px; }
+    .presentation-mode .super-cards { margin-bottom:18px; }
+    .presentation-mode .table-wrap { margin-bottom:12px; }
+
+    @media(max-width:1050px) { .layout { grid-template-columns:1fr; } #map { height:620px; } .side-card { max-height:none; } }
+    @media(max-width:650px) { .summary-grid,.filters,.super-cards,.sim-grid { grid-template-columns:1fr; } .topbar { align-items:flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div><h1>Arive Operations Dashboard</h1><div class="subtitle">Live superintendent cards, presentation mode, bulk what-if planning, forecast, territory spread, and pipeline map</div></div>
+    <div class="top-actions"><span class="status-pill" id="lastUpdated">Loading...</span><button class="button" id="presentationBtn" onclick="togglePresentationMode()">Presentation Mode</button><a class="button" href="https://docs.google.com/spreadsheets/d/1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys/edit?usp=sharing" target="_blank">Open Google Sheet</a><button class="button dark" onclick="location.reload()">Refresh Dashboard</button></div>
+  </div>
+  <div class="layout">
+    <div class="map-card"><div id="map"></div></div>
+    <div class="side-card">
+      <div class="section-title">Capacity Summary</div><div id="status" class="notice">Loading live data from Google Sheets...</div>
+      <div class="summary-grid"><div class="summary-card"><div class="label">Current WU</div><div class="value" id="currentWU">—</div></div><div class="summary-card"><div class="label">Upcoming Digs</div><div class="value" id="upcomingDigs">—</div></div><div class="summary-card"><div class="label">Total WU</div><div class="value" id="totalWU">—</div></div></div>
+      <div class="section-title">Superintendent Cards <span class="small">0–14 light • 15–22 balanced • 23+ heavy</span></div><div class="super-cards" id="superCards"></div>
+      <div class="section-title">Executive Notes <span class="small">Top items only</span></div><div class="alert-list" id="alertList"></div>
+      <div class="section-title presentation-hide">What If Simulator <span class="small">Preview only — does not change the Google Sheet</span></div>
+      <div class="sim-grid presentation-hide">
+        <div class="filter-box">
+          <label>Move Communities</label>
+          <div class="community-picker" id="simCommunityList"></div>
+          <div class="sim-actions">
+            <button class="mini-button" type="button" onclick="selectAllSimCommunities()">Select All</button>
+            <button class="mini-button" type="button" onclick="clearSimCommunities()">Clear</button>
+          </div>
+        </div>
+        <div class="filter-box">
+          <label for="simTo">Move To</label>
+          <select id="simTo"></select>
+          <div class="small" style="margin-top:8px;">Check several communities to preview a bulk reassignment.</div>
+        </div>
+      </div>
+      <div class="sim-result presentation-hide" id="simResult">Select one or more communities and a superintendent to preview impact.</div>
+      <div class="section-title">Superintendent Workload Forecast <span class="small">Live from Workload Forecast tab</span></div>
+      <div class="table-wrap"><table class="forecast-table"><thead id="forecastHead"></thead><tbody id="forecastRows"></tbody></table></div>
+      <div class="filters presentation-hide"><div class="filter-box"><label for="superFilter">Filter Superintendent</label><select id="superFilter"><option value="All">All Superintendents</option></select></div><div class="filter-box"><label>Map Layers</label><div class="toggle-row"><label><input type="checkbox" id="toggleActive" checked> Active</label><label><input type="checkbox" id="toggleFuture" checked> Future</label><label><input type="checkbox" id="togglePotential" checked> Potential</label><label><input type="checkbox" id="toggleLabels"> Labels</label></div></div></div>
+      
+      <div class="section-title presentation-hide">Territory Spread <span class="small">How far each super is spread geographically</span></div>
+      <div class="table-wrap presentation-hide"><table><thead><tr><th>Super</th><th>Communities</th><th>Furthest Spread</th><th>Read</th></tr></thead><tbody id="spreadRows"></tbody></table></div>
+      
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+const SHEET_ID = "1t_SEDax_3jA7xihmVavnEGIj86cV0T1vZ5Ev2GRE8Ys";
+const TAB_ACTIVE = "Active Communities";
+const TAB_FUTURE = "Future Communities";
+const TAB_POTENTIAL = "Potential Projects";
+const TAB_WORKLOAD = "Workload Forecast";
+const THRESHOLDS = { lightMax:14, balancedMax:22 };
+const superColors = {"Burke":"#1f77b4","Manuel":"#ff7f0e","Greg":"#2ca02c","Deryck":"#d62728","Unassigned":"#7f7f7f"};
+
+let map, baseGroups = {}, activeData = [], futureData = [], potentialData = [], workloadForecastData = [], currentFilter = "All";
+
+function setStatus(message, type) {
+  const el = document.getElementById("status");
+  el.className = "notice " + (type || "");
+  el.innerHTML = message;
+}
+
+function norm(h) { return String(h || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+
+function num(x) {
+  if (x === null || x === undefined) return 0;
+  const cleaned = String(x).replace(/,/g, "").trim();
+  if (cleaned === "" || cleaned.toLowerCase() === "tbd") return 0;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i + 1];
+    if (c === '"' && inQuotes && n === '"') { cell += '"'; i++; continue; }
+    if (c === '"') { inQuotes = !inQuotes; continue; }
+    if (c === "," && !inQuotes) { row.push(cell); cell = ""; continue; }
+    if ((c === "\n" || c === "\r") && !inQuotes) {
+      if (c === "\r" && n === "\n") i++;
+      row.push(cell); cell = "";
+      if (row.some(v => String(v).trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += c;
+  }
+  row.push(cell);
+  if (row.some(v => String(v).trim() !== "")) rows.push(row);
+  return rows;
+}
+
+function defaultHeadersFor(tabName) {
+  if (tabName === TAB_ACTIVE) return ["Subdivision","Latitude","Longitude","Superintendent","Homes","Townhomes","Upcoming Digs","Column 8","Column 9","Column 10","Column 11","Column 12","Column 13","Column 14","Column 15"];
+  return ["Community","Latitude","Longitude","Status","Lots","Address","Column 7","Column 8","Column 9","Column 10","Column 11","Column 12"];
+}
+
+function rowsToObjectsForTab(rows, tabName) {
+  if (!rows || !rows.length) return [];
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const joined = rows[i].map(x => norm(x)).join("|");
+    if ((joined.includes("subdivision") || joined.includes("community") || joined.includes("project")) &&
+        (joined.includes("latitude") || joined.includes("lat")) &&
+        (joined.includes("longitude") || joined.includes("lng") || joined.includes("long"))) {
+      headerIndex = i;
+      break;
+    }
+  }
+  const headers = headerIndex >= 0 ? rows[headerIndex].map((h, idx) => String(h || `Column ${idx+1}`).trim()) : defaultHeadersFor(tabName);
+  const dataStart = headerIndex >= 0 ? headerIndex + 1 : 0;
+  return rows.slice(dataStart).map(r => {
+    const obj = {};
+    const maxLen = Math.max(headers.length, r.length);
+    for (let i = 0; i < maxLen; i++) obj[headers[i] || `Column ${i+1}`] = r[i] ?? "";
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => String(v).trim() !== ""));
+}
+
+async function fetchTab(tabName) {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName);
+  const res = await fetch(url, { cache:"no-store" });
+  if (!res.ok) throw new Error(tabName + " CSV failed. HTTP " + res.status);
+  const text = await res.text();
+  const rows = parseCSV(text);
+  const objects = rowsToObjectsForTab(rows, tabName);
+  if (!objects.length) throw new Error(tabName + " loaded but had no usable rows.");
+  return objects;
+}
+
+async function fetchWorkloadForecast() {
+  const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(TAB_WORKLOAD);
+  const res = await fetch(url, { cache:"no-store" });
+  if (!res.ok) {
+    console.warn("Workload Forecast tab failed. HTTP", res.status);
+    return [];
+  }
+
+  const text = await res.text();
+  let rows = parseCSV(text).filter(r => r.some(c => String(c).trim() !== ""));
+  if (!rows.length) return [];
+
+  // Drop a title row like "workload by month" if it exists above the real headers.
+  if (rows.length > 1 && norm(rows[0][0]).includes("workload") && !rows[0].some(c => ["burke","greg","manuel","deryck","month"].includes(norm(c)))) {
+    rows = rows.slice(1);
+  }
+
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const normalized = rows[i].map(x => norm(x));
+    const hasMonth = normalized.includes("month") || normalized.includes("super") || normalized.includes("superintendent");
+    const nameCount = normalized.filter(x => x && x !== "month" && x !== "super" && x !== "superintendent" && !x.startsWith("column")).length;
+    if (hasMonth && nameCount >= 2) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  let headers;
+  let dataStart;
+  if (headerIndex >= 0) {
+    headers = rows[headerIndex].map((h, i) => String(h || `Column ${i+1}`).trim());
+    headers[0] = "Month";
+    dataStart = headerIndex + 1;
+  } else {
+    // Fallback for no-header CSV in the original order.
+    headers = ["Month", "Burke", "Greg", "Manuel", "Deryck"];
+    dataStart = 0;
+  }
+
+  return rows.slice(dataStart)
+    .map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = r[i] ?? "");
+      return obj;
+    })
+    .filter(r => rowLabel(r) !== "");
+}
+
+
+function val(row, names) {
+  const keys = Object.keys(row || {});
+  for (const name of names) {
+    const found = keys.find(k => norm(k) === norm(name));
+    if (found !== undefined) return row[found];
+  }
+  return "";
+}
+
+function parseCoord(value) {
+  const n = Number(String(value ?? "").trim().replace(/,$/, ""));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function parseLatLng(row) {
+  let latRaw = val(row, ["Latitude","Lat"]);
+  let lngRaw = val(row, ["Longitude","Long","Lng"]);
+  if (String(latRaw).includes(",")) {
+    const parts = String(latRaw).split(",");
+    latRaw = parts[0];
+    if (!lngRaw || String(lngRaw).trim() === "") lngRaw = parts[1];
+  }
+  const lat = parseCoord(latRaw), lng = parseCoord(lngRaw);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? {lat,lng} : null;
+}
+
+function normalizeSuper(s) {
+  const clean = String(s || "Unassigned").trim();
+  const found = Object.keys(superColors).find(x => x.toLowerCase() === clean.toLowerCase());
+  return found || clean;
+}
+
+function activeFromRow(row) {
+  const ll = parseLatLng(row);
+  if (!ll) return null;
+  const subdivision = String(val(row, ["Subdivision","Community","Name"])).trim();
+  if (!subdivision) return null;
+  const homes = num(val(row, ["Homes","Home Count","Current Homes"]));
+  const townhomes = num(val(row, ["Townhomes","Townhomes?","Townhome","TH"]));
+  const upcoming = num(val(row, ["Upcoming Digs","Upcoming","Digs"]));
+  const current = homes + townhomes * 0.5;
+  return { subdivision, address:String(val(row, ["Address","Location"])).trim(), super:normalizeSuper(String(val(row, ["Superintendent","Super"])).trim() || "Unassigned"), homes, townhomes, upcoming, current_weighted:current, total_weighted:current+upcoming, raw:row, ...ll };
+}
+
+function futureFromRow(row, type) {
+  const ll = parseLatLng(row);
+  if (!ll) return null;
+  const community = String(val(row, ["Community","Subdivision","Project","Name"])).trim();
+  if (!community) return null;
+  return { community, address:String(val(row, ["Address","Location","City"])).trim(), status:String(val(row, ["Status","Estimated Dig","Timing","Date","Potential Dig"])).trim(), lots:num(val(row, ["Lots","How Many Lots","Homes","Total Lots","Units"])), type, ...ll };
+}
+
+function workloadStatus(total) { if (total <= THRESHOLDS.lightMax) return "light"; if (total <= THRESHOLDS.balancedMax) return "balanced"; return "heavy"; }
+function statusLabel(total) { const s = workloadStatus(total); return s === "light" ? "Light" : s === "balanced" ? "Balanced" : "Heavy"; }
+
+function initMap() {
+  map = L.map("map").setView([40.245,-111.79],10);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"&copy; OpenStreetMap contributors" }).addTo(map);
+  baseGroups.active = L.featureGroup().addTo(map);
+  baseGroups.future = L.featureGroup().addTo(map);
+  baseGroups.potential = L.featureGroup().addTo(map);
+  baseGroups.labels = L.layerGroup();
+  L.control.layers(null, {"Active Communities":baseGroups.active,"Future Communities":baseGroups.future,"Potential Projects":baseGroups.potential,"Zoom Labels":baseGroups.labels}).addTo(map);
+  map.on("zoomend", updateLabels);
+}
+
+function tooltip(item, type) {
+  const name = item.subdivision || item.community || "Community";
+  return `${type}: ${name}${item.super ? " • " + item.super : ""}${item.total_weighted !== undefined ? " • " + item.total_weighted.toFixed(1) + " WU" : ""}${item.lots ? " • " + item.lots + " lots" : ""}${item.status ? " • " + item.status : ""}`;
+}
+
+function hover(layer, item, type) {
+  layer.bindTooltip(tooltip(item,type), { direction:"top", offset:[0,-8], opacity:.95, sticky:true, className:"arive-hover-tooltip" });
+  return layer;
+}
+
+function clearMap() { Object.values(baseGroups).forEach(g => g.clearLayers()); }
+
+function addActive(loc) {
+  const color = superColors[loc.super] || superColors.Unassigned;
+  const radius = Math.max(6, Math.min(28, 5 + loc.total_weighted * .85));
+  const popup = `<b>${loc.subdivision}</b><br>${loc.address || ""}<br><br><b>Super:</b> ${loc.super}<br><b>Homes:</b> ${loc.homes}<br><b>Townhomes:</b> ${loc.townhomes}<br><b>Upcoming digs:</b> ${loc.upcoming}<br><b>Current weighted:</b> ${loc.current_weighted.toFixed(1)}<br><b>Total weighted:</b> ${loc.total_weighted.toFixed(1)}<br><b>Status:</b> ${statusLabel(loc.total_weighted)}`;
+  hover(L.circleMarker([loc.lat,loc.lng], { radius, color, fillColor:color, fillOpacity:.62, weight:2 }).bindPopup(popup), loc, "Active").addTo(baseGroups.active);
+  L.marker([loc.lat,loc.lng], { icon:L.divIcon({ className:"", html:`<div class="map-label" style="border-color:${color};"><div class="sub">${loc.subdivision}</div><div class="super" style="color:${color};">${loc.super}</div></div>`, iconSize:[64,21], iconAnchor:[32,37] }) }).addTo(baseGroups.labels);
+}
+
+function addFuture(item, type) {
+  const popup = `<b>${item.community}</b><br>${item.address || ""}<br><br><b>Type:</b> ${type}<br><b>Status:</b> ${item.status || ""}<br><b>Lots:</b> ${item.lots || ""}`;
+  const symbol = type === "Future" ? "⭐" : "◆";
+  const style = type === "Future" ? "font-size:24px;text-shadow:0 1px 3px #333;" : "font-size:24px;color:#666;text-shadow:0 1px 3px #fff;";
+  const icon = L.divIcon({ className:"", html:`<div style="${style}">${symbol}</div>`, iconSize:[26,26], iconAnchor:[13,13] });
+  hover(L.marker([item.lat,item.lng], {icon}).bindPopup(popup), item, type).addTo(type === "Future" ? baseGroups.future : baseGroups.potential);
+}
+
+function updateLabels() {
+  const show = document.getElementById("toggleLabels").checked || map.getZoom() >= 12;
+  if (show && !map.hasLayer(baseGroups.labels)) map.addLayer(baseGroups.labels);
+  if (!show && map.hasLayer(baseGroups.labels)) map.removeLayer(baseGroups.labels);
+}
+
+function applyLayerToggles() {
+  [["toggleActive",baseGroups.active],["toggleFuture",baseGroups.future],["togglePotential",baseGroups.potential]].forEach(([id,g]) => {
+    const checked = document.getElementById(id).checked;
+    if (checked && !map.hasLayer(g)) map.addLayer(g);
+    if (!checked && map.hasLayer(g)) map.removeLayer(g);
+  });
+  updateLabels();
+}
+
+function haversine(a,b) {
+  const R=3958.8, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180, lat1=a.lat*Math.PI/180, lat2=b.lat*Math.PI/180;
+  const h=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function statsFor(active) {
+  const stats = {};
+  active.forEach(loc => {
+    const s = loc.super || "Unassigned";
+    if (!stats[s]) stats[s] = {communities:0,homes:0,townhomes:0,upcoming:0,current:0,total:0};
+    stats[s].communities++; stats[s].homes += loc.homes; stats[s].townhomes += loc.townhomes; stats[s].upcoming += loc.upcoming; stats[s].current += loc.current_weighted; stats[s].total += loc.total_weighted;
+  });
+  return stats;
+}
+
+function spreadForSuper(superName) {
+  const pts = activeData.filter(a => a.super === superName);
+  if (pts.length <= 1) return {maxMiles:0, avgFromCenter:0, communities:pts.length, read:"Single location"};
+  let maxMiles = 0;
+  for (let i=0; i<pts.length; i++) for (let j=i+1; j<pts.length; j++) maxMiles = Math.max(maxMiles, haversine(pts[i], pts[j]));
+  const center = { lat:pts.reduce((s,p)=>s+p.lat,0)/pts.length, lng:pts.reduce((s,p)=>s+p.lng,0)/pts.length };
+  const avgFromCenter = pts.reduce((s,p)=>s+haversine(p,center),0)/pts.length;
+  const read = maxMiles >= 25 ? "Very spread out" : maxMiles >= 15 ? "Spread out" : maxMiles >= 8 ? "Moderate" : "Tight";
+  return {maxMiles, avgFromCenter, communities:pts.length, read};
+}
+
+function spreadLabel(s) { return spreadForSuper(s).maxMiles.toFixed(1) + " mi"; }
+
+function renderAll() {
+  clearMap();
+  const active = currentFilter === "All" ? activeData : activeData.filter(x => x.super === currentFilter);
+  active.forEach(addActive); futureData.forEach(x => addFuture(x,"Future")); potentialData.forEach(x => addFuture(x,"Potential"));
+  applyLayerToggles(); renderTables(active, futureData, potentialData); fitVisibleMap();
+}
+
+function renderTables(active, future, potential) {
+  const allStats = statsFor(activeData), stats = statsFor(active);
+  const total = Object.values(stats).reduce((s,v)=>s+v.total,0), current = Object.values(stats).reduce((s,v)=>s+v.current,0), digs = Object.values(stats).reduce((s,v)=>s+v.upcoming,0);
+  document.getElementById("currentWU").textContent = current.toFixed(1);
+  document.getElementById("upcomingDigs").textContent = digs.toFixed(0);
+  document.getElementById("totalWU").textContent = total.toFixed(1);
+  renderAlerts(allStats); renderForecast(allStats); renderSuperCards(allStats); renderSpreadRows(allStats); renderSimulator();
+}
+
+function renderAlerts(stats) {
+  const entries = Object.entries(stats);
+  const alerts = [];
+
+  if (!entries.length) {
+    document.getElementById("alertList").innerHTML = '<div class="alert-item">No active data loaded yet.</div>';
+    return;
+  }
+
+  const heaviest = entries.slice().sort((a,b)=>b[1].total-a[1].total)[0];
+  const lightest = entries.slice().sort((a,b)=>a[1].total-b[1].total)[0];
+  const mostUpcoming = entries.slice().sort((a,b)=>b[1].upcoming-a[1].upcoming)[0];
+
+  if (heaviest && heaviest[1].total > THRESHOLDS.balancedMax) {
+    alerts.push({type:"danger", text:`⚠️ ${heaviest[0]} is currently heaviest at ${heaviest[1].total.toFixed(1)} WU.`});
+  } else if (heaviest) {
+    alerts.push({type:"good", text:`✅ Current loads are mostly balanced. Highest is ${heaviest[0]} at ${heaviest[1].total.toFixed(1)} WU.`});
+  }
+
+  if (lightest) {
+    alerts.push({type:"good", text:`✅ ${lightest[0]} has the most available capacity at ${lightest[1].total.toFixed(1)} WU.`});
+  }
+
+  if (mostUpcoming && mostUpcoming[1].upcoming >= 8) {
+    alerts.push({type:"warning", text:`📅 ${mostUpcoming[0]} has the most upcoming digs at ${mostUpcoming[1].upcoming.toFixed(0)}.`});
+  }
+
+  if (workloadForecastData && workloadForecastData.length) {
+    const supers = forecastSupers();
+    const last = workloadForecastData[workloadForecastData.length - 1];
+    const lastVals = supers.map(s => [s, forecastSuperValue(last, s)]);
+    const finalHigh = lastVals.slice().sort((a,b) => b[1] - a[1])[0];
+
+    if (finalHigh) {
+      alerts.push({type:"warning", text:`📈 By ${rowLabel(last)}, ${finalHigh[0]} is projected highest at ${finalHigh[1].toFixed(0)}.`});
+    }
+  }
+
+  document.getElementById("alertList").innerHTML = alerts.slice(0,4).map(a => `<div class="alert-item ${a.type}">${a.text}</div>`).join("");
+}
+
+function renderSuperCards(stats) {
+  document.getElementById("superCards").innerHTML = Object.entries(stats).sort((a,b)=>b[1].total-a[1].total).map(([s,v]) => {
+    const color = superColors[s] || superColors.Unassigned, st = workloadStatus(v.total), activeClass = currentFilter === s ? " active-filter" : "";
+    return `<div class="super-card${activeClass}" style="border-left-color:${color}" onclick="selectSuper('${s.replace(/'/g,"\\'")}')"><div class="super-head"><div class="super-name"><span class="dot" style="background:${color}"></span>${s}</div><span class="badge ${st}">${statusLabel(v.total)}</span></div><div class="super-metrics"><div>Total WU<br><b>${v.total.toFixed(1)}</b></div><div>Current WU<br><b>${v.current.toFixed(1)}</b></div><div>Upcoming<br><b>${v.upcoming.toFixed(0)}</b></div><div>Spread<br><b>${spreadLabel(s)}</b></div></div></div>`;
+  }).join("");
+}
+
+function renderSpreadRows(stats) {
+  document.getElementById("spreadRows").innerHTML = Object.keys(stats).sort((a,b)=>spreadForSuper(b).maxMiles-spreadForSuper(a).maxMiles).map(s => {
+    const sp = spreadForSuper(s), color = superColors[s] || superColors.Unassigned;
+    return `<tr><td><span class="dot" style="background:${color}"></span>${s}</td><td>${sp.communities}</td><td>${sp.maxMiles.toFixed(1)} mi</td><td>${sp.read}</td></tr>`;
+  }).join("");
+}
+
+function renderCommunityRows(active) {
+  document.getElementById("communityRows").innerHTML = active.slice().sort((a,b)=>(a.super+a.subdivision).localeCompare(b.super+b.subdivision)).map(loc => `<tr><td><span class="dot" style="background:${superColors[loc.super]||superColors.Unassigned}"></span>${loc.subdivision}</td><td>${loc.super}</td><td>${loc.homes}</td><td>${loc.townhomes}</td><td>${loc.upcoming}</td><td>${loc.total_weighted.toFixed(1)}</td></tr>`).join("");
+}
+
+function renderOpportunityRows(future,potential,stats) {
+  const centroids = {};
+  Object.keys(stats).forEach(s => {
+    const pts = activeData.filter(a => a.super === s);
+    if (pts.length) centroids[s] = { lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length, lng:pts.reduce((sum,p)=>sum+p.lng,0)/pts.length };
+  });
+  const capacityFit = Object.entries(stats).sort((a,b)=>a[1].total-b[1].total)[0]?.[0] || "";
+  document.getElementById("opportunityRows").innerHTML = future.concat(potential).map(o => {
+    let closest = "", min = Infinity;
+    Object.entries(centroids).forEach(([s,c]) => { const d = haversine(o,c); if (d < min) { min = d; closest = s; } });
+    const rec = closest && capacityFit && closest === capacityFit ? closest : (closest && capacityFit ? closest + " / " + capacityFit : (closest || capacityFit || ""));
+    return `<tr><td>${o.community}</td><td>${o.lots || ""}</td><td>${o.status || o.type || ""}</td><td>${closest}</td><td>${capacityFit}</td><td><span class="recommendation">${rec}</span></td></tr>`;
+  }).join("");
+}
+
+
+
+function rowLabel(row) {
+  return String(row["Month"] || row["SUPER"] || row["Super"] || row[""] || Object.values(row)[0] || "").trim();
+}
+
+function forecastSupers() {
+  if (workloadForecastData && workloadForecastData.length) {
+    const first = workloadForecastData[0] || {};
+    const keys = Object.keys(first);
+    const dynamic = keys.filter(k => {
+      const nk = norm(k);
+      return nk && nk !== "month" && nk !== "super" && nk !== "superintendent" && !nk.startsWith("column");
+    });
+    if (dynamic.length) return dynamic;
+  }
+
+  const activeSupers = Array.from(new Set(activeData.map(x => x.super))).filter(Boolean);
+  return activeSupers.length ? activeSupers.sort() : ["Burke", "Greg", "Manuel", "Deryck"];
+}
+
+function forecastSuperValue(row, superName) {
+  const keys = Object.keys(row || {});
+  const found = keys.find(k => norm(k) === norm(superName));
+  return found ? num(row[found]) : 0;
+}
+
+function renderForecast(stats) {
+  const supers = forecastSupers();
+
+  if (workloadForecastData && workloadForecastData.length) {
+    document.getElementById("forecastHead").innerHTML =
+      `<tr><th>Month</th>${supers.map(s => `<th>${s}</th>`).join("")}</tr>`;
+
+    document.getElementById("forecastRows").innerHTML = workloadForecastData.map(row => {
+      const label = rowLabel(row);
+      const cells = supers.map(s => {
+        const total = forecastSuperValue(row, s);
+        const st = workloadStatus(total);
+        return `<td><span class="heat ${st}">${total.toFixed(0)}</span></td>`;
+      }).join("");
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }).join("");
+    return;
+  }
+
+  const months = [{label:"Current", fallback:"current"}, {label:"With Digs", fallback:"total"}];
+  document.getElementById("forecastHead").innerHTML =
+    `<tr><th>Super</th>${months.map(m => `<th>${m.label}</th>`).join("")}</tr>`;
+
+  document.getElementById("forecastRows").innerHTML = Object.keys(stats).sort().map(s => {
+    const locs = activeData.filter(a => a.super === s), color = superColors[s] || superColors.Unassigned;
+    const cells = months.map(m => {
+      const total = locs.reduce((sum, loc) => sum + (m.fallback === "current" ? loc.current_weighted : loc.total_weighted), 0);
+      const st = workloadStatus(total);
+      return `<td><span class="heat ${st}">${total.toFixed(1)}</span></td>`;
+    }).join("");
+    return `<tr><td><span class="dot" style="background:${color}"></span>${s}</td>${cells}</tr>`;
+  }).join("");
+}
+
+function populateSimulator() {
+  const list = document.getElementById("simCommunityList");
+  const superSelect = document.getElementById("simTo");
+  if (!list || !superSelect) return;
+
+  const sorted = activeData.slice().sort((a,b) => a.subdivision.localeCompare(b.subdivision));
+  list.innerHTML = sorted.map(c => {
+    const idx = activeData.indexOf(c);
+    return `<label class="community-check">
+      <input type="checkbox" class="sim-community-box" value="${idx}" onchange="renderSimulator()">
+      <span>${c.subdivision} — ${c.super} <span class="small">(${c.total_weighted.toFixed(1)} WU)</span></span>
+    </label>`;
+  }).join("");
+
+  const supers = Array.from(new Set(activeData.map(x => x.super))).sort();
+  superSelect.innerHTML = supers.map(s => `<option value="${s}">${s}</option>`).join("");
+  superSelect.onchange = renderSimulator;
+  renderSimulator();
+}
+
+function selectedSimCommunities() {
+  return Array.from(document.querySelectorAll(".sim-community-box:checked"))
+    .map(box => activeData[Number(box.value)])
+    .filter(Boolean);
+}
+
+function selectAllSimCommunities() {
+  document.querySelectorAll(".sim-community-box").forEach(box => box.checked = true);
+  renderSimulator();
+}
+
+function clearSimCommunities() {
+  document.querySelectorAll(".sim-community-box").forEach(box => box.checked = false);
+  renderSimulator();
+}
+
+function renderSimulator() {
+  const superSelect = document.getElementById("simTo");
+  const result = document.getElementById("simResult");
+  if (!superSelect || !result || !activeData.length) return;
+
+  const selected = selectedSimCommunities();
+  const toSuper = superSelect.value;
+
+  if (!selected.length || !toSuper) {
+    result.innerHTML = "Select one or more communities and a superintendent to preview impact.";
+    return;
+  }
+
+  const stats = statsFor(activeData);
+  const adjusted = JSON.parse(JSON.stringify(stats));
+  const moveImpact = selected.reduce((sum, c) => sum + c.total_weighted, 0);
+  const communityNames = selected.map(c => c.subdivision).join(", ");
+
+  selected.forEach(c => {
+    if (!adjusted[c.super]) adjusted[c.super] = {communities:0, homes:0, townhomes:0, upcoming:0, current:0, total:0};
+    if (!adjusted[toSuper]) adjusted[toSuper] = {communities:0, homes:0, townhomes:0, upcoming:0, current:0, total:0};
+
+    if (c.super !== toSuper) {
+      adjusted[c.super].total -= c.total_weighted;
+      adjusted[c.super].current -= c.current_weighted;
+      adjusted[c.super].upcoming -= c.upcoming;
+      adjusted[c.super].communities -= 1;
+
+      adjusted[toSuper].total += c.total_weighted;
+      adjusted[toSuper].current += c.current_weighted;
+      adjusted[toSuper].upcoming += c.upcoming;
+      adjusted[toSuper].communities += 1;
+    }
+  });
+
+  const changedSupers = Array.from(new Set(selected.map(c => c.super).concat([toSuper]))).sort();
+
+  const rows = changedSupers.map(s => {
+    const before = stats[s]?.total || 0;
+    const after = adjusted[s]?.total || 0;
+    return `<div class="impact-row">
+      <span>${s}</span>
+      <b>${before.toFixed(1)} → ${after.toFixed(1)} WU (${statusLabel(after)})</b>
+    </div>`;
+  }).join("");
+
+  const alreadyAssigned = selected.filter(c => c.super === toSuper).length;
+  const movedCount = selected.length - alreadyAssigned;
+
+  result.innerHTML = `
+    <div style="font-weight:900;margin-bottom:6px;">Bulk Move Preview</div>
+    <div class="small" style="margin-bottom:8px;">
+      ${selected.length} selected • ${movedCount} would move to ${toSuper} • ${moveImpact.toFixed(1)} total selected WU.
+    </div>
+    ${rows}
+    <div class="impact-row"><span>Selected communities</span><b>${communityNames}</b></div>
+    <div class="small" style="margin-top:8px;">This is preview only. It does not update the Google Sheet.</div>
+  `;
+}
+
+
+function populateFilters() {
+  const select = document.getElementById("superFilter");
+  const supers = Array.from(new Set(activeData.map(x=>x.super))).sort();
+  select.innerHTML = `<option value="All">All Superintendents</option>` + supers.map(s => `<option value="${s}">${s}</option>`).join("");
+}
+
+function selectSuper(s) { currentFilter = currentFilter === s ? "All" : s; document.getElementById("superFilter").value = currentFilter; renderAll(); }
+
+function fitVisibleMap() {
+  const groups = [baseGroups.active,baseGroups.future,baseGroups.potential].filter(g => map.hasLayer(g) && g.getLayers().length);
+  if (groups.length) { const bounds = L.featureGroup(groups).getBounds(); if (bounds.isValid()) map.fitBounds(bounds.pad(.18)); }
+}
+
+function wireEvents() {
+  document.getElementById("superFilter").addEventListener("change", e => { currentFilter = e.target.value; renderAll(); });
+  ["toggleActive","toggleFuture","togglePotential","toggleLabels"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => { applyLayerToggles(); if (id !== "toggleLabels") fitVisibleMap(); });
+  });
+}
+
+
+function togglePresentationMode() {
+  document.body.classList.toggle("presentation-mode");
+  const on = document.body.classList.contains("presentation-mode");
+  const btn = document.getElementById("presentationBtn");
+  if (btn) btn.textContent = on ? "Exit Presentation" : "Presentation Mode";
+
+  // In presentation mode, keep the map clean and focused.
+  if (on) {
+    if (document.getElementById("toggleLabels")) document.getElementById("toggleLabels").checked = false;
+    if (document.getElementById("toggleActive")) document.getElementById("toggleActive").checked = true;
+    if (document.getElementById("toggleFuture")) document.getElementById("toggleFuture").checked = true;
+    if (document.getElementById("togglePotential")) document.getElementById("togglePotential").checked = true;
+  }
+
+  if (typeof applyLayerToggles === "function") applyLayerToggles();
+
+  setTimeout(() => {
+    if (map) {
+      map.invalidateSize();
+      fitVisibleMap();
+    }
+  }, 150);
+}
+
+async function init() {
+  try {
+    initMap(); wireEvents();
+    const [activeRows, futureRows, potentialRows] = await Promise.all([fetchTab(TAB_ACTIVE), fetchTab(TAB_FUTURE), fetchTab(TAB_POTENTIAL)]);
+    workloadForecastData = await fetchWorkloadForecast().catch(err => {
+      console.warn("Workload Forecast could not load", err);
+      return [];
+    });
+    activeData = activeRows.map(activeFromRow).filter(x => x);
+    futureData = futureRows.map(r => futureFromRow(r,"Future")).filter(x => x);
+    potentialData = potentialRows.map(r => futureFromRow(r,"Potential")).filter(x => x);
+    if (!activeData.length) throw new Error("Active Communities loaded, but no active rows were usable.");
+    populateFilters(); populateSimulator(); renderAll();
+    const now = new Date();
+    document.getElementById("lastUpdated").textContent = "Loaded " + now.toLocaleString();
+    setStatus(`Live data loaded: ${activeData.length} active, ${futureData.length} future, ${potentialData.length} potential, ${workloadForecastData.length} forecast rows. Refresh after editing Google Sheets.`, "ok");
+  } catch (err) {
+    console.error(err);
+    setStatus(`<b>Dashboard error:</b><br>${err.message}`, "error");
+    document.getElementById("lastUpdated").textContent = "Load failed";
+  }
+}
+
+window.addEventListener("error", event => setStatus(`<b>JavaScript error:</b><br>${event.message}`, "error"));
+init();
+</script>
+</body>
+</html>
