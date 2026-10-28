@@ -460,8 +460,6 @@ function wire(){
  $('downloadButton').addEventListener('click',showExportMenu);$('exportMapButton').addEventListener('click',exportMapPNG);$('printButton').addEventListener('click',()=>{fitMap();window.print();});$('importButton').addEventListener('click',()=>{const val=prompt('Import options:\n1 — Updated dig forecast (.xlsx)\n2 — Previously exported Hidden Landing plan (.json)\n3 — Reset to the original forecast\n\nEnter 1, 2 or 3:','1');if(val==='3'){restoreDefault();return;}if(val==='1'||val==='2'){$('fileChooser').accept=val==='1'?'.xlsx':'.json';$('fileChooser').value='';$('fileChooser').click();}});
  $('fileChooser').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.name.toLowerCase().endsWith('.xlsx'))await importXLSX(f);else if(f.name.toLowerCase().endsWith('.json'))importJSON(JSON.parse(await f.text()));else throw Error('Choose a .xlsx forecast or .json plan.');}catch(err){console.error(err);alert(`Import failed: ${err.message}`);}});
 }
-restore();wire();sharedInit();render();requestAnimationFrame(()=>{fitMap();if(window.innerWidth<720){zoom=.82;zoomAuto=false;applyZoom();}});window.__plannerDebug={getPlan:()=>structuredClone(plan),getSource:()=>structuredClone(base),selectLot,assignment,exportCSV,exportJSON,exportMapPNG,render,fmtWindow,getLotAt,swapLotDigDates,typeEvidence,moveBadge,planFloorPlan,saveFloorPlanForSelected,exportCSV,positionOf,floorLabelPosition,getShowFloorPlans:()=>showFloorPlans};
-
 // PRIVATE LIVE SYNC ADAPTER. Each edited lot is saved independently with a revision
 // precondition to avoid overwriting another collaborator's changes.
 const shared={connected:false,silent:false,busy:false,endpoint:'',key:'',actor:'',revs:{},committed:{},timer:null,dirty:new Set()};
@@ -489,7 +487,7 @@ function sharedLoad(data){
    shared.revs[id]=Number(d.rev)||0;
    shared.committed[id]=sharedFields(plan[id]);
  }
- shared.silent=false;save();render();
+ save();shared.silent=false;render();
 }
 async function sharedConnect(){
  const u=$('sharedEndpoint').value.trim().replace(/\/$/,'');
@@ -560,6 +558,9 @@ function sharedInit(){
  $('sharedRefresh').addEventListener('click',()=>sharedRefresh(true));
  window.addEventListener('beforeunload',e=>{if(shared.connected&&shared.dirty.size){e.preventDefault();e.returnValue='';}});
 }
+
+restore();wire();sharedInit();render();requestAnimationFrame(()=>{fitMap();if(window.innerWidth<720){zoom=.82;zoomAuto=false;applyZoom();}});window.__plannerDebug={getPlan:()=>structuredClone(plan),getSource:()=>structuredClone(base),selectLot,assignment,exportCSV,exportJSON,exportMapPNG,render,fmtWindow,getLotAt,swapLotDigDates,typeEvidence,moveBadge,planFloorPlan,saveFloorPlanForSelected,exportCSV,positionOf,floorLabelPosition,getShowFloorPlans:()=>showFloorPlans};
+
 </script>
 </body>
 </html>
