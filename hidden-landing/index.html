@@ -210,7 +210,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity
 <div class="shared-bar" id="sharedBar" aria-label="Live shared planning status">
  <strong>↔ Hidden Landing · Shared planning</strong>
  <span id="sharedIndicator" class="shared-warning">Not connected · edits stay on this device</span>
- <input id="sharedEndpoint" type="url" aria-label="Apps Script web app URL" placeholder="Apps Script /exec URL" autocomplete="off" spellcheck="false">
+ <input id="sharedEndpoint" type="url" aria-label="Apps Script web app URL" placeholder="Apps Script /exec URL" value="https://script.google.com/macros/s/AKfycbwdS3yF6EXbbe3iQdU0MoizwRDDsIOH9GBWqAbFc5hVZxhAfCgZ5edefgd3mCxsoH3f/exec" autocomplete="off" spellcheck="false">
  <input id="sharedKey" type="password" aria-label="Shared access key" placeholder="Shared access key" autocomplete="off">
  <input id="sharedActor" aria-label="Your name" placeholder="Your name" autocomplete="nickname" maxlength="60">
  <button type="button" id="sharedConnect">Connect to shared Sheet</button>
@@ -553,7 +553,7 @@ async function sharedRefresh(show=true){
  try{let d=await sharedGet();if(!d.ok)throw Error(d.error||'Read failed');sharedLoad(d);if(show)toast('Latest shared plan loaded');sharedStatus('Live shared · updated from Google Sheet',true);}catch(e){sharedStatus('Could not refresh · '+e.message);}
 }
 function sharedInit(){
- try{const v=JSON.parse(localStorage.getItem(SHARED_CONFIG)||'{}');$('sharedEndpoint').value=v.endpoint||'';$('sharedActor').value=v.actor||'';$('sharedKey').value=sessionStorage.getItem(SHARED_CONFIG+':key')||'';}catch(e){}
+ try{const v=JSON.parse(localStorage.getItem(SHARED_CONFIG)||'{}');$('sharedEndpoint').value=v.endpoint||'https://script.google.com/macros/s/AKfycbwdS3yF6EXbbe3iQdU0MoizwRDDsIOH9GBWqAbFc5hVZxhAfCgZ5edefgd3mCxsoH3f/exec';$('sharedActor').value=v.actor||'';$('sharedKey').value=sessionStorage.getItem(SHARED_CONFIG+':key')||'';}catch(e){}
  $('sharedConnect').addEventListener('click',sharedConnect);
  $('sharedRefresh').addEventListener('click',()=>sharedRefresh(true));
  window.addEventListener('beforeunload',e=>{if(shared.connected&&shared.dirty.size){e.preventDefault();e.returnValue='';}});
